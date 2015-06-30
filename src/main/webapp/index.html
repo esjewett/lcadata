@@ -36,11 +36,11 @@
                     <button class="col-md-2 btn btn-default" ng-click="initState()">Show employer state</button>
                     <button class="col-md-2 btn btn-default" ng-click="initJob()">Show job title</button>
                   </div>
-                  <div id="state-chart" class="chart col-md-4" ng-show="showState">
-                    <div class="title">Employer State</div>
+                  <div id="state-chart" class="chart col-md-12" ng-show="showState">
+                    <div class="title">Employer State (<a ng-click="removeState()">remove</a>)</div>
                   </div>
-                  <div id="job-chart" class="chart col-md-4" ng-show="showJob">
-                    <div class="title">Top 30 Job Titles</div>
+                  <div id="job-chart" class="chart col-md-12" ng-show="showJob">
+                    <div class="title">Top 30 Job Titles (<a ng-click="removeJob()">remove</a>)</div>
                   </div>
                 </div>
               </div>

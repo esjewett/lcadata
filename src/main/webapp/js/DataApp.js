@@ -45,7 +45,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       {key: "wage_from", column: 16, round: 10000 }
 //        {key: "full_time", column: 19},
     ]
-  });
+  }).then(dataService.load);
   
   $scope.$on('endAdd', function(e) {
     $('#loading-indicator').removeClass('active');
@@ -100,6 +100,13 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   });
   
   $scope.showState = false;
+  $scope.removeState = function() {
+    stateChart.svg().remove();
+    $scope.showState = false;
+    dc.deregisterChart(stateChart);
+    employmentState.dispose();
+    dataService.removeDimension({key: "employment_state", column: 11 }).then(dataService.load);
+  }
   $scope.initState = function() {
     
     var promise = dataService.addDimension({key: "employment_state", column: 11 });
@@ -137,6 +144,13 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   }
   
   $scope.showJob = false;
+  $scope.removeJob = function() {
+    jobChart.svg().remove();
+    $scope.showJob = false;
+    dc.deregisterChart(jobChart);
+    jobTitle.dispose();
+    dataService.removeDimension({key: "job_title", column: 15 }).then(dataService.load);
+  }
   $scope.initJob = function () {
     $scope.showJob = true;
     
@@ -172,8 +186,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     jobChart.render();
     
     promise.then(dataService.load);
-    console.log(jobTitle);
-    console.log(jobTitles);
   }
   
   // Code from Crossfilter example website.
@@ -226,7 +238,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     .elasticX(true);
     
   dc.renderAll();
-  dataService.load();
     
 //  dc.pieChart('#full-time-chart')
 //    .width(180)

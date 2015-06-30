@@ -3,13 +3,13 @@ package model
 
 import net.liftmodules.ng.Angular.NgModel
 import net.liftweb.common.Box
-import net.liftweb.http.SessionVar
+import net.liftweb.http.RequestVar
 
 object ActiveDimension {
 	
 	// var dimensions: Seq[Dimension] = Seq()
 	val emptyDim: Seq[Dimension] = Seq()
-	object dimensions extends SessionVar(emptyDim)
+	object dimensions extends RequestVar(emptyDim)
 	
 	def parseFromDimensions(line: Seq[String], dimensions: Seq[Dimension]) = {
 		for(dim <- dimensions; round = dim.round.getOrElse(0)) yield {

@@ -23,7 +23,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       wages = wage.group().reduceSum(function(d) { return d.count; }),
 //      fullTime = visas.dimension(function(d) { return d.full_time; }),
 //      fullTimes = fullTime.group(),
-      numberDisplay, dateChart, stateChart, wageHistogram, employmentState, employmentStates;
+      numberDisplay, dateChart, stateChart, wageHistogram, employmentState, employmentStates,
+      jobTitle, jobTitles, jobChart;
       
 //  reducer(dates);
   ordinalReducer(statuses);
@@ -91,6 +92,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     visas.add(newObj);
     
     if(stateChart) stateChart.calculateColorDomain();
+    if(jobChart) jobChart.calculateColorDomain();
     if(wageHistogram) wageHistogram.x(d3.scale.linear().domain([0, +(wage.top(1)[0] ? wage.top(1)[0].wage_from : 100000) ]));
     
     dc.redrawAll();
@@ -100,7 +102,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   $scope.showState = false;
   $scope.initState = function() {
     
-    dataService.addDimension({key: "employment_state", column: 11 });
+    var promise = dataService.addDimension({key: "employment_state", column: 11 });
     employmentState = visas.dimension(function(d) { return d.employment_state; });
     employmentStates = employmentState.group();
     ordinalReducer(employmentStates);
@@ -131,12 +133,47 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       stateChart.render();
     });
     
-    dataService.load();
+    promise.then(dataService.load);
   }
   
   $scope.showJob = false;
   $scope.initJob = function () {
     $scope.showJob = true;
+    
+    var promise = dataService.addDimension({key: "job_title", column: 15 });
+    jobTitle = visas.dimension(function(d) { return d.job_title; });
+    jobTitles = jobTitle.group();
+    ordinalReducer(jobTitles);
+    jobTitles.order(function(d) { return d.aggCount.sum; });
+    
+    jobChart = dc.bubbleChart('#job-chart')
+      .width(990)
+      .height(500)
+      .dimension(jobTitle)
+      .group(jobTitles)
+      .colorAccessor(function(d) { return d.value.aggCount.sum; })
+      .keyAccessor(function(d) { return d.value.aggCount.sum; })
+      .valueAccessor(function(d) { return d.value.aggAvg(); })
+      .radiusValueAccessor(function(d) { return d.value.aggAvg(); })
+      .x(d3.scale.log().domain([0, jobTitles.top(1)[0] ? jobTitles.top(1)[0] : 1 ]))
+      .maxBubbleRelativeSize(0.05)
+      .yAxisPadding(10000)
+      .elasticY(true)
+      .elasticX(true)
+      .elasticRadius(true)
+      .renderHorizontalGridLines(true)
+      .renderVerticalGridLines(true)
+      .xAxisLabel("Count")
+      .yAxisLabel("Average Salary")
+      .renderLabel(true)
+      .data(function(group) { return group.top(30); })
+      .label(function(d) { return d.key; });
+      
+    jobChart.render();
+    
+    promise.then(dataService.load);
+    console.log(jobTitle);
+    console.log(jobTitles);
   }
   
   // Code from Crossfilter example website.

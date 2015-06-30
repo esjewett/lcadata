@@ -30,12 +30,9 @@ class DataService {
     })
     .jsonCall("addDimensions", (dimensions: Dimensions) => {
       ActiveDimension.currentIteration += 1
-      println("Before: " + ActiveDimension.dimensions.is.length)
       for(dim <- dimensions.dimensions) {
         if(!ActiveDimension.dimensions.is.contains(dim)) {
-          println("Before internal loop: " + ActiveDimension.dimensions.is.length)
           ActiveDimension.dimensions.set(ActiveDimension.dimensions.is :+ dim)
-          println("After internal loop: " + ActiveDimension.dimensions.is.length)
         }
       }
       println("After: " + ActiveDimension.dimensions.is.length)
@@ -54,6 +51,7 @@ class DataService {
     .jsonCall("load", {
     
       // val oldRdd = LocalSparkContext.data
+      println("Active dimensions in load: " + ActiveDimension.dimensions.is.length)
       val newRdd = LocalSparkContext.data.getOrElseUpdate(ActiveDimension.dimensions.is, LocalSparkContext.dataRDD)
     
       // println("Old context count: " + oldRdd.count())  

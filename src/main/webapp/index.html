@@ -1,0 +1,65 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><meta content="text/html; charset=UTF-8" http-equiv="content-type" /><title>Home</title></head>
+  <body class="lift:content_id=main">
+    <div id="main" data-lift="surround?with=default;at=content" >
+      <div ng-app="DataApp">
+        <p>
+          <div ng-controller="Data">
+            <div data-lift="comet?type=DataActor"></div>
+  	        <div class="container">
+              <div id="charts">
+                <div class="row">
+                  <div id="status-chart" class="chart col-md-4">
+                    <div class="title">Status</div>
+                  </div>
+<!--                  <div id="class-chart" class="chart col-md-4">
+                    <div class="title">Visa class</div>
+                  </div>-->
+                  <div id="wage-unit-chart" class="chart col-md-4">
+                    <div class="title">Wage Unit</div>
+                  </div>
+<!--                  <div id="full-time-chart" class="chart col-md-4">
+                    <div class="title">Full time?</div>
+                  </div>-->
+                  <div id="wage-histogram-chart" class="chart col-md-4">
+                    <div class="title">Wage Distribution</div>
+                  </div>
+                </div>
+<!--                <div class="row">
+                  <div id="date-chart" class="chart col-md-12">
+                    <div class="title">Date</div>
+                  </div>
+                </div>-->
+                <div class="row">
+                  <div id="state-chart" class="chart col-md-4">
+                    <div class="title">Employer State</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="row">
+                <button class="col-md-2" ng-click="load()">Load</button>
+                <button class="col-md-2" ng-click="addDim()">Add dimension</button>
+                <button class="col-md-2" ng-click="removeDim()">Remove dimension</button>
+                <div class="progress col-md-2">
+                  <div id="loading-indicator" class="progress-bar progress-bar-info progress-bar-striped" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+                    <span class="sr-only">Loading indicator</span>
+                  </div>
+                </div>
+                <aside id="totals" class="col-md-8"></aside>
+              </div>
+
+<!--              <div id="lists">
+                <div id="flight-list" class="list"></div>
+              </div>-->
+            </div>
+          </div>
+        </p>
+      </div>
+      <script type="application/javascript" data-lift="DataService.services"></script>
+      <script src="js/DataApp.js" type="application/javascript"></script>
+    </div>
+  </body>
+</html>
+

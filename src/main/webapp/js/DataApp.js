@@ -21,35 +21,18 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       wageUnits = wageUnit.group(),
       wage = visas.dimension(function(d) { return +d.wage_from; }),
       wages = wage.group().reduceSum(function(d) { return d.count; }),
-      employmentState = visas.dimension(function(d) { return d.employment_state; }),
-      employmentStates = employmentState.group(),
 //      fullTime = visas.dimension(function(d) { return d.full_time; }),
 //      fullTimes = fullTime.group(),
-      numberDisplay, dateChart, stateChart, wageHistogram;
+      numberDisplay, dateChart, stateChart, wageHistogram, employmentState, employmentStates;
       
 //  reducer(dates);
   ordinalReducer(statuses);
 //  reducer(visaClasses);
   ordinalReducer(wageUnits);
-  ordinalReducer(employmentStates);
 //  reducer(fullTimes);
   reductio()
     .groupAll(function() { return [""]; })
     .sum('count')(all);
-  
-  $scope.load = function() {
-    console.time("Load to first response");
-    $('#loading-indicator').addClass('active');
-    dataService.load().then(function() { console.log("RDD processed. Sending result.")});
-  };
-  
-  $scope.addDim = function() {
-    dataService.addDimension({key: "visa_class", column: 5});    
-  }
-  
-  $scope.removeDim = function() {
-    dataService.removeDimension({key: "visa_class", column: 5});
-  }
   
   // Setup
   dataService.addDimensions({
@@ -58,22 +41,20 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       {key: "status", column: 2 },
 //        {key: "visa_class", column: 5},
       {key: "wage_unit", column: 18 },
-      {key: "wage_from", column: 16, round: 10000 },
+      {key: "wage_from", column: 16, round: 10000 }
 //        {key: "full_time", column: 19},
-      {key: "employment_state", column: 11 }
     ]
   });
   
   $scope.$on('endAdd', function(e) {
-    $('#loading-indicator').removeClass('active')
+    $('#loading-indicator').removeClass('active');
   });
   
   $scope.$on('beginAdd', function(e) {
-    
+    $('#loading-indicator').addClass('active');
   });
   
   $scope.$on('addData', function(e, obj) {
-    console.timeEnd("Load to first response");
     
     console.log(JSON.stringify(obj).length);
     console.log(obj);
@@ -109,12 +90,54 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     
     visas.add(newObj);
     
-    stateChart.calculateColorDomain();
-    wageHistogram.x(d3.scale.linear().domain([0, +(wage.top(1)[0] ? wage.top(1)[0].wage_from : 100000) ]))
+    if(stateChart) stateChart.calculateColorDomain();
+    if(wageHistogram) wageHistogram.x(d3.scale.linear().domain([0, +(wage.top(1)[0] ? wage.top(1)[0].wage_from : 100000) ]));
     
     dc.redrawAll();
 //    dc.renderAll();
   });
+  
+  $scope.showState = false;
+  $scope.initState = function() {
+    
+    dataService.addDimension({key: "employment_state", column: 11 });
+    employmentState = visas.dimension(function(d) { return d.employment_state; });
+    employmentStates = employmentState.group();
+    ordinalReducer(employmentStates);
+    
+    d3.json("../geo/us-states.json", function (statesJson) {
+      var colorScale = d3.scale.quantize().range(["#E2F2FF", "#C4E4FF", "#9ED2FF", "#81C5FF", "#6BBAFF", "#51AEFF", "#36A2FF", "#1E96FF", "#0089FF", "#0061B5"]);
+      
+      $scope.$apply(function(s) { s.showState = true; });
+      
+      stateChart = dc.geoChoroplethChart('#state-chart')
+        .width(990)
+        .height(500)
+        .dimension(employmentState)
+        .group(employmentStates)
+  //      .colorAccessor(function(d) { return d.value.aggAvg && d.value.aggAvg() ? d.value.aggAvg() : 0; })
+        .colorAccessor(function(d) { return d.value.aggCount.sum; })
+        .colors(colorScale)
+        .calculateColorDomain()
+  //      .colorCalculator(function (d) { return d ? colorScale(d.aggAvg && d.aggAvg() ? d.aggAvg() : 0) : '#ccc'; })
+        .colorCalculator(function (d) { return d ? colorScale(d.aggCount.sum) : '#ccc'; })
+        .overlayGeoJson(statesJson.features, "state", function (d) {
+            return d.properties.name;
+        })
+        .title(function (d) {
+  //          return "State: " + d.key + "\nAverage Salary: " + formatNumber(d.aggAvg && d.aggAvg() ? d.aggAvg() : 0);
+              return "State: " + d.key + "\nTotal applications: " + formatNumber(d.aggCount && d.aggCount.sum);
+        });
+      stateChart.render();
+    });
+    
+    dataService.load();
+  }
+  
+  $scope.showJob = false;
+  $scope.initJob = function () {
+    $scope.showJob = true;
+  }
   
   // Code from Crossfilter example website.
   
@@ -136,21 +159,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   // Disable transitions for real interactive filtering
   dc.disableTransitions = true;
     
-//  dateChart = dc.barChart('#date-chart')
-//    .width(990)
-//    .height(150)
-//    .margins({top: 0, right: 50, bottom: 20, left: 40})
-//    .dimension(date)
-//    .group(dates)
-//    .centerBar(true)
-//    .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
-//    .gap(1)
-//    .x(d3.time.scale().domain([new Date(2009, 0, 1), new Date(2014, 11, 31)]))
-//    .elasticY(true)
-//    .round(d3.time.day.round)
-//    .alwaysUseRounding(true)
-//    .xUnits(d3.time.day);
-    
   wageHistogram = dc.barChart('#wage-histogram-chart')
     .height(150)
     .margins({top: 20, right: 10, bottom: 20, left: 50})
@@ -170,15 +178,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     .dimension(status)
     .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
     .elasticX(true);
-    
-//  dc.rowChart('#class-chart')
-//    .height(180)
-//    .margins({top: 20, left: 10, right: 10, bottom: 20})
-//    .group(visaClasses)
-//    .dimension(visaClass)
-//    .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
-//    .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
-//    .elasticX(true);
 
   dc.rowChart('#wage-unit-chart')
     .height(180)
@@ -189,6 +188,9 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
     .elasticX(true);
     
+  dc.renderAll();
+  dataService.load();
+    
 //  dc.pieChart('#full-time-chart')
 //    .width(180)
 //    .height(180)
@@ -196,32 +198,30 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
 //    .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
 //    .dimension(fullTime)
 //    .group(fullTimes);
-  
-  d3.json("../geo/us-states.json", function (statesJson) {
-    var colorScale = d3.scale.quantize().range(["#E2F2FF", "#C4E4FF", "#9ED2FF", "#81C5FF", "#6BBAFF", "#51AEFF", "#36A2FF", "#1E96FF", "#0089FF", "#0061B5"]);
-    
-    stateChart = dc.geoChoroplethChart('#state-chart')
-      .width(990)
-      .height(500)
-      .dimension(employmentState)
-      .group(employmentStates)
-//      .colorAccessor(function(d) { return d.value.aggAvg && d.value.aggAvg() ? d.value.aggAvg() : 0; })
-      .colorAccessor(function(d) { return d.value.aggCount.sum; })
-      .colors(colorScale)
-      .calculateColorDomain()
-//      .colorCalculator(function (d) { return d ? colorScale(d.aggAvg && d.aggAvg() ? d.aggAvg() : 0) : '#ccc'; })
-      .colorCalculator(function (d) { return d ? colorScale(d.aggCount.sum) : '#ccc'; })
-      .overlayGeoJson(statesJson.features, "state", function (d) {
-          return d.properties.name;
-      })
-      .title(function (d) {
-//          return "State: " + d.key + "\nAverage Salary: " + formatNumber(d.aggAvg && d.aggAvg() ? d.aggAvg() : 0);
-            return "State: " + d.key + "\nTotal applications: " + formatNumber(d.aggCount && d.aggCount.sum);
-      });
-      
-    dc.renderAll();
-  });
-  
+
+//  dc.rowChart('#class-chart')
+//    .height(180)
+//    .margins({top: 20, left: 10, right: 10, bottom: 20})
+//    .group(visaClasses)
+//    .dimension(visaClass)
+//    .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
+//    .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+//    .elasticX(true);
+
+//  dateChart = dc.barChart('#date-chart')
+//    .width(990)
+//    .height(150)
+//    .margins({top: 0, right: 50, bottom: 20, left: 40})
+//    .dimension(date)
+//    .group(dates)
+//    .centerBar(true)
+//    .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
+//    .gap(1)
+//    .x(d3.time.scale().domain([new Date(2009, 0, 1), new Date(2014, 11, 31)]))
+//    .elasticY(true)
+//    .round(d3.time.day.round)
+//    .alwaysUseRounding(true)
+//    .xUnits(d3.time.day);
       
 //  var charts = [
 //    barChart()

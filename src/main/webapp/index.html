@@ -10,7 +10,7 @@
   	        <div class="container">
               <div id="charts">
                 <div class="row">
-                  <div id="status-chart" class="chart col-md-4">
+                  <div id="status-chart" class="chart col-md-4" ng-show="showStatus">
                     <div class="title">Status</div>
                   </div>
 <!--                  <div id="class-chart" class="chart col-md-4">
@@ -37,20 +37,15 @@
                     <button class="col-md-2 btn btn-default" ng-click="initJob()">Show job title</button>
                   </div>
                   <div id="state-chart" class="chart col-md-12" ng-show="showState">
-                    <div class="title">Employer State (<a ng-click="removeState()">remove</a>)</div>
+                    <div class="title">Employer State by Number of Applications (<a ng-click="removeState()">remove</a>)</div>
                   </div>
                   <div id="job-chart" class="chart col-md-12" ng-show="showJob">
-                    <div class="title">Top 30 Job Titles (<a ng-click="removeJob()">remove</a>)</div>
+                    <div class="title">30 Most Common Job Titles (<a ng-click="removeJob()">remove</a>)</div>
                   </div>
                 </div>
               </div>
               
               <div class="row">
-                <div class="progress col-md-2">
-                  <div id="loading-indicator" class="progress-bar progress-bar-info progress-bar-striped" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
-                    <span class="sr-only">Loading indicator</span>
-                  </div>
-                </div>
                 <aside id="totals" class="col-md-8"></aside>
               </div>
 

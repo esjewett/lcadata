@@ -15,6 +15,8 @@ import model._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
+import org.coredatra.bigfilter.model.Data
+
 case class Dimensions(dimensions: List[Dimension]) extends NgModel
 
 class DataService {
@@ -50,14 +52,24 @@ class DataService {
     })
     .jsonCall("load", {
     
-      // val oldRdd = LocalSparkContext.data
+      val oldRdd = LocalSparkContext.data.getOrElse(ActiveDimension.oldDimensions.is, LocalSparkContext.dataRDD(ActiveDimension.oldDimensions.is))
       println("Active dimensions in load: " + ActiveDimension.dimensions.is.length)
-      val newRdd = LocalSparkContext.data.getOrElseUpdate(ActiveDimension.dimensions.is, LocalSparkContext.dataRDD)
+      val newRdd = LocalSparkContext.data.getOrElseUpdate(ActiveDimension.dimensions.is, LocalSparkContext.dataRDD(ActiveDimension.dimensions.is))
     
-      // println("Old context count: " + oldRdd.count())  
+      println("Old context count: " + oldRdd.count())  
       println("New context count: " + newRdd.count())
       
-      val iter = newRdd.toLocalIterator
+      val combinedRdd = if(ActiveDimension.oldDimensions.is.length > 0) {
+        oldRdd.map((data) => {
+          Data(data.keys, data.values.map((v) => { v * -1 }), false)
+        }).union(newRdd).sortBy((d) => d.keys.mkString)
+      } else {
+        newRdd
+      }
+      
+      println("Combined context count: " + combinedRdd.count())
+      
+      val iter = combinedRdd.toLocalIterator
     
       var payload: ArrayBuffer[Data] = ArrayBuffer()
       
@@ -84,9 +96,10 @@ class DataService {
         (sess) => sess.sendCometActorMessage("DataActor", Empty, ("endAdd", Empty))
       )
       
-      payload = ArrayBuffer()    
+      payload = ArrayBuffer()
+      ActiveDimension.oldDimensions(ActiveDimension.dimensions.is) 
  
-      Full("Done")
+      Empty
     })
   ))
   
@@ -130,9 +143,15 @@ class DataService {
     }
     
     for((data, i) <- payload.zipWithIndex) {
-      for((dim, idx) <- ActiveDimension.dimensions.is.zipWithIndex) {
-        appendCompressed(dim.key, data.keys(idx), i)
+      data.newRec match {
+        case true => for((dim, idx) <- ActiveDimension.dimensions.is.zipWithIndex) {
+                        appendCompressed(dim.key, data.keys(idx), i)
+                      }
+        case false => for((dim, idx) <- ActiveDimension.oldDimensions.is.zipWithIndex) {
+                        appendCompressed(dim.key, data.keys(idx), i)
+                      }
       }
+      
       appendCompressed("count", data.values(0).toString, i)
       appendCompressed("sum", data.values(1).toString, i)
       appendCompressed("avg", data.values(2).toString, i)

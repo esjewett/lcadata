@@ -10,6 +10,7 @@ object ActiveDimension {
 	// var dimensions: Seq[Dimension] = Seq()
 	val emptyDim: Seq[Dimension] = Seq()
 	object dimensions extends RequestVar(emptyDim)
+	object oldDimensions extends RequestVar(emptyDim)
 	
 	def parseFromDimensions(line: Seq[String], dimensions: Seq[Dimension]) = {
 		for(dim <- dimensions; round = dim.round.getOrElse(0)) yield {

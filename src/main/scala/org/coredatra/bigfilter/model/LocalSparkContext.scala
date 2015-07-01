@@ -43,16 +43,12 @@ object LocalSparkContext {
     })
     .filter(line => {
         line.drop(17).head != "Select Pay Range" &&
-        line.drop(17).head != "" &&
-        line.drop(35).head.toDouble < 500000
+        line.drop(17).head != ""
       })
     
   val data: scala.collection.mutable.Map[Seq[Dimension], RDD[Data]] = scala.collection.mutable.Map()
   
-  def dataRDD = {
-    // The actual Spark processing is outside of the session context so we need to grab the contents of the
-    // SessionVar here.
-    val dimensions = ActiveDimension.dimensions.is
+  def dataRDD = (dimensions:Seq[Dimension]) => {
   
     splitFiles
       .map(line => ( ActiveDimension.parseFromDimensions(line, dimensions),
@@ -62,8 +58,8 @@ object LocalSparkContext {
           .aggregateByKey(Seq(0.0,0.0,0.0))( (u,v) => { Seq(u(0)+1, u(1) + v(1), (u(1) + v(1)) / (u(0)+1)) }, 
             (a,b) => { Seq(a(0)+b(0), a(1)+b(1), (a(1)+b(1))/(a(0)+b(0))) } )
           .sortBy({ case (f,c) => f.mkString })
-          .map({ case (f,c) => Data(f, Seq(c(0).round, ((c(1) / 1000).floor * 1000).round, c(2).round)) })
+          .map({ case (f,c) => Data(f, Seq(c(0).round, ((c(1) / 1000).floor * 1000).round, c(2).round), true) })
   }
 }
 
-case class Data(keys: Seq[String], values: Seq[Long]) extends NgModel
+case class Data(keys: Seq[String], values: Seq[Long], newRec: Boolean) extends NgModel

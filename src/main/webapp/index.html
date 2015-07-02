@@ -9,26 +9,34 @@
             <div data-lift="comet?type=DataActor"></div>
   	        <div class="container">
               <div id="charts">
+                <h1 class="col-md-6 col-md-offset-3">LCA Applications 2010-2014</h1>
+                <div class="row">
+                  <aside id="totals" class="col-md-3 col-md-offset-9"></aside>
+                </div>
                 <div class="row">
                   <div id="status-chart" class="chart col-md-4" ng-show="showStatus">
-                    <div class="title">Application Status (<a ng-click="removeStatus()">remove</a>)</div>
+                    <div class="title">Application Status <a ng-click="removeStatus()">remove</a></div>
                   </div>
 <!--                  <div id="class-chart" class="chart col-md-4">
                     <div class="title">Visa class</div>
                   </div>-->
                   <div id="wage-unit-chart" class="chart col-md-4" ng-show="showUnit">
-                    <div class="title">Wage Unit (<a ng-click="removeUnit()">remove</a>)</div>
+                    <div class="title">Wage Unit <a ng-click="removeUnit()">remove</a></div>
                   </div>
 <!--                  <div id="full-time-chart" class="chart col-md-4">
                     <div class="title">Full time?</div>
                   </div>-->
                   <div id="wage-histogram-chart" class="chart col-md-4" ng-show="showWage">
-                    <div class="title">Wage Distribution rounded to nearest $10,000 (<a ng-click="removeWage()">remove</a>)</div>
+                    <div class="title">Wage Distribution (rounded by $10,000) <a ng-click="removeWage()">remove</a></div>
                   </div>
-                  <div class="col-md-4" ng-show="topRowCount < 3">
+                  <div id="num-positions-chart" class="chart col-md-4" ng-show="showNumPositions">
+                    <div class="title">Number of positions in application <a ng-click="removeNumPositions()">remove</a></div>
+                  </div>
+                  <div id="button-area-1" class="col-md-4" ng-show="topRowCount < 3">
                     <button class="btn btn-default" ng-click="initStatus()" ng-show="!showStatus">Show Application Status</button>
                     <button class="btn btn-default" ng-click="initUnit()" ng-show="!showUnit">Show Wage Unit</button>
                     <button class="btn btn-default" ng-click="initWage()" ng-show="!showWage">Show Wage</button>
+                    <button class="btn btn-default" ng-click="initNumPositions()" ng-show="!showNumPositions">Show Number of Positions</button>
                   </div>
                 </div>
 <!--                <div class="row">
@@ -36,22 +44,18 @@
                     <div class="title">Date</div>
                   </div>
                 </div>-->
-                <div class="row">
+                <div class="row" id="button-area-2">
                   <div class="col-md-12" ng-show="!showState && !showJob">
                     <button class="col-md-2 btn btn-default" ng-click="initState()">Show employer state</button>
                     <button class="col-md-2 btn btn-default" ng-click="initJob()">Show job title</button>
                   </div>
                   <div id="state-chart" class="chart col-md-12" ng-show="showState">
-                    <div class="title">Employer State by Number of Applications (<a ng-click="removeState()">remove</a>)</div>
+                    <div class="title">Employer State by Number of Applications <a ng-click="removeState()">remove</a></div>
                   </div>
                   <div id="job-chart" class="chart col-md-12" ng-show="showJob">
-                    <div class="title">30 Most Common Job Titles (<a ng-click="removeJob()">remove</a>)</div>
+                    <div class="title">30 Most Common Job Titles <a ng-click="removeJob()">remove</a></div>
                   </div>
                 </div>
-              </div>
-              
-              <div class="row">
-                <aside id="totals" class="col-md-8"></aside>
               </div>
 
 <!--              <div id="lists">

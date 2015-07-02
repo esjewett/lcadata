@@ -11,7 +11,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       all = visas.groupAll(),
       status, statuses, wageUnit, wageUnits, wage, wages,
       numberDisplay, dateChart, stateChart, wageHistogram, employmentState, employmentStates,
-      jobTitle, jobTitles, jobChart, statusChart, wageUnitChart;
+      jobTitle, jobTitles, jobChart, statusChart, wageUnitChart,
+      numPositionsChart, numPosition, numPositions;
       
 //  reducer(dates);
 //  reducer(visaClasses);
@@ -92,8 +93,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       $scope.$apply(function(s) { s.showState = true; });
       
       stateChart = dc.geoChoroplethChart('#state-chart')
-        .width(990)
-        .height(500)
+        .width($("#button-area-2").width())
+        .height(600)
         .dimension(employmentState)
         .group(employmentStates)
         .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
@@ -138,8 +139,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     jobTitles.order(function(d) { return d.aggCount.sum; });
     
     jobChart = dc.bubbleChart('#job-chart')
-      .width(990)
-      .height(500)
+      .width($("#button-area-2").width())
+      .height(600)
       .dimension(jobTitle)
       .group(jobTitles)
       .colorAccessor(function(d) { return d.value.aggCount.sum; })
@@ -189,13 +190,16 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     
     statusChart = dc.rowChart('#status-chart')
       .height(180)
-      .margins({top: 20, left: 10, right: 10, bottom: 20})
+      .width($("#button-area-1").width())
+      .margins({top: 5, left: 10, right: 10, bottom: 20})
       .group(statuses)
       .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
       .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
       .dimension(status)
       .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
       .elasticX(true);
+      
+    statusChart.xAxis().ticks(5);
       
     statusChart.render();
     
@@ -220,12 +224,13 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     $scope.topRowCount += 1;
     
     var promise = dataService.addDimension({key: "wage_from", column: 36, round: 10000 });
-    wage = visas.dimension(function(d) { return Math.min(Math.max(+d.wage_from, 10000),500000); });
+    wage = visas.dimension(function(d) { return d.wage_from ? Math.min(Math.max(+d.wage_from, 10000),500000) : 0; });
     wages = wage.group(function(d) { return Math.min(d, 500000); }).reduceSum(function(d) { return d.count; });
     
     wageHistogram = dc.barChart('#wage-histogram-chart')
       .height(180)
-      .margins({top: 20, right: 10, bottom: 20, left: 50})
+      .width($("#button-area-1").width())
+      .margins({top: 5, right: 10, bottom: 20, left: 50})
       .dimension(wage)
       .group(wages)
       .centerBar(true)
@@ -264,7 +269,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     
     wageUnitChart = dc.rowChart('#wage-unit-chart')
       .height(180)
-      .margins({top: 20, left: 10, right: 10, bottom: 20})
+      .width($("#button-area-1").width())
+      .margins({top: 5, left: 10, right: 10, bottom: 20})
       .group(wageUnits)
       .dimension(wageUnit)
       .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
@@ -272,12 +278,57 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
       .elasticX(true);
       
+    wageUnitChart.xAxis().ticks(5);
+      
     wageUnitChart.render();
     
     return promise;
   }
   $scope.initUnit = function() {
     $scope.setupUnit().then(dataService.load);
+  }
+  
+  $scope.showNumPositions = false;
+  $scope.removeNumPositions = function() {
+    numPositionsChart.svg().remove();
+    $scope.showNumPositions = false;
+    $scope.topRowCount -= 1;
+    dc.deregisterChart(numPositionsChart);
+    numPosition.dispose();
+    numPositions.dispose();
+    dataService.removeDimension({key: "num_positions", column: 20 }).then(dataService.load);
+  }
+  $scope.setupNumPositions = function () {
+    var max = 20;
+    var min = 1;
+    
+    $scope.showNumPositions = true;
+    $scope.topRowCount += 1;
+    
+    var promise = dataService.addDimension({key: "num_positions", column: 20 });
+    numPosition = visas.dimension(function(d) { return d.num_positions ? Math.min(Math.max(+d.num_positions, min),max) : 0; });
+    numPositions = numPosition.group(function(d) { return Math.min(d, max); }).reduceSum(function(d) { return d.count; });
+    
+    numPositionsChart = dc.barChart('#num-positions-chart')
+      .height(180)
+      .width($("#button-area-1").width())
+      .margins({top: 5, right: 10, bottom: 20, left: 50})
+      .group(numPositions)
+      .dimension(numPosition)
+      .round(dc.round.floor)
+      .alwaysUseRounding(true)
+      .gap(1)
+      .x(d3.scale.linear().domain([min, max ]))
+      .elasticY(true);
+
+    numPositionsChart.xAxis().ticks(5);
+      
+    numPositionsChart.render();
+    
+    return promise;
+  }
+  $scope.initNumPositions = function() {
+    $scope.setupNumPositions().then(dataService.load);
   }
   
   
@@ -300,7 +351,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       
   // Setup charts
   numberDisplay = dc.dataCount("#totals")
-    .dimension({ size: function() { return 0; } })
+    .dimension({ size: function() { return 2078595; } })
     .group({ value: function() { return all.value()[0] ? all.value()[0].value.sum : 0; }})
     .html({
       some: '%filter-count out of %total-count applications displayed',

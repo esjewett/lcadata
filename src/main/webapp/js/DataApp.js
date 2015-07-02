@@ -9,17 +9,12 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   // Create the crossfilter for the relevant dimensions and groups.
   var visas = crossfilter(),
       all = visas.groupAll(),
-      status, status,
-      wageUnit = visas.dimension(function(d) { return d.wage_unit; }),
-      wageUnits = wageUnit.group(),
-      wage = visas.dimension(function(d) { return Math.min(Math.max(+d.wage_from, 10000),500000); }),
-      wages = wage.group(function(d) { return Math.min(d, 500000); }).reduceSum(function(d) { return d.count; }),
+      status, statuses, wageUnit, wageUnits, wage, wages,
       numberDisplay, dateChart, stateChart, wageHistogram, employmentState, employmentStates,
       jobTitle, jobTitles, jobChart, statusChart, wageUnitChart;
       
 //  reducer(dates);
 //  reducer(visaClasses);
-  ordinalReducer(wageUnits);
 //  reducer(fullTimes);
   reductio()
     .groupAll(function() { return [""]; })
@@ -32,6 +27,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   $scope.$on('beginAdd', function(e) {
 //    $('#loading-indicator').addClass('active');
   });
+  
+  $scope.topRowCount = 0;
   
   $scope.$on('addData', function(e, obj) {
         
@@ -175,6 +172,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   $scope.removeStatus = function() {
     statusChart.svg().remove();
     $scope.showStatus = false;
+    $scope.topRowCount -= 1;
     dc.deregisterChart(statusChart);
     status.dispose();
     statuses.dispose();
@@ -182,16 +180,18 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   }
   $scope.setupStatus = function () {
     $scope.showStatus = true;
+    $scope.topRowCount += 1;
     
     var promise = dataService.addDimension({key: "status", column: 2 });
-    status = visas.dimension(function(d) { return d.status; }),
-    statuses = status.group(),
+    status = visas.dimension(function(d) { return d.status ? d.status : ""; });
+    statuses = status.group();
     ordinalReducer(statuses);
     
     statusChart = dc.rowChart('#status-chart')
       .height(180)
       .margins({top: 20, left: 10, right: 10, bottom: 20})
       .group(statuses)
+      .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
       .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
       .dimension(status)
       .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
@@ -205,18 +205,90 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     $scope.setupStatus().then(dataService.load);
   }
   
+  $scope.showWage = false;
+  $scope.removeWage = function() {
+    wageHistogram.svg().remove();
+    $scope.showWage = false;
+    $scope.topRowCount -= 1;
+    dc.deregisterChart(wageHistogram);
+    wage.dispose();
+    wages.dispose();
+    dataService.removeDimension({key: "wage_from", column: 36, round: 10000 }).then(dataService.load);
+  }
+  $scope.setupWage = function () {
+    $scope.showWage = true;
+    $scope.topRowCount += 1;
+    
+    var promise = dataService.addDimension({key: "wage_from", column: 36, round: 10000 });
+    wage = visas.dimension(function(d) { return Math.min(Math.max(+d.wage_from, 10000),500000); });
+    wages = wage.group(function(d) { return Math.min(d, 500000); }).reduceSum(function(d) { return d.count; });
+    
+    wageHistogram = dc.barChart('#wage-histogram-chart')
+      .height(180)
+      .margins({top: 20, right: 10, bottom: 20, left: 50})
+      .dimension(wage)
+      .group(wages)
+      .centerBar(true)
+      .gap(1)
+      .x(d3.scale.linear().domain([10000, 500000 ]))
+      .elasticY(true);
+      
+    wageHistogram.xAxis().ticks(5);
+      
+    wageHistogram.render();
+    
+    return promise;
+  }
+  $scope.initWage = function() {
+    $scope.setupWage().then(dataService.load);
+  }
+  
+  $scope.showUnit = false;
+  $scope.removeUnit = function() {
+    wageUnitChart.svg().remove();
+    $scope.showUnit = false;
+    $scope.topRowCount -= 1;
+    dc.deregisterChart(wageUnitChart);
+    wageUnit.dispose();
+    wageUnits.dispose();
+    dataService.removeDimension({key: "wage_unit", column: 18 }).then(dataService.load);
+  }
+  $scope.setupUnit = function () {
+    $scope.showUnit = true;
+    $scope.topRowCount += 1;
+    
+    var promise = dataService.addDimension({key: "wage_unit", column: 18 });
+    wageUnit = visas.dimension(function(d) { return d.wage_unit ? d.wage_unit : ""; });
+    wageUnits = wageUnit.group();
+    ordinalReducer(wageUnits);
+    
+    wageUnitChart = dc.rowChart('#wage-unit-chart')
+      .height(180)
+      .margins({top: 20, left: 10, right: 10, bottom: 20})
+      .group(wageUnits)
+      .dimension(wageUnit)
+      .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
+      .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
+      .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+      .elasticX(true);
+      
+    wageUnitChart.render();
+    
+    return promise;
+  }
+  $scope.initUnit = function() {
+    $scope.setupUnit().then(dataService.load);
+  }
+  
   
   // Setup default dimensions
   dataService.addDimensions({
     dimensions: [
 //        {key: "date", column: 3 },
-      {key: "status", column: 2 },
 //        {key: "visa_class", column: 5},
-      {key: "wage_unit", column: 18 },
-      {key: "wage_from", column: 36, round: 10000 }
 //        {key: "full_time", column: 19},
     ]
-  }).then($scope.setupStatus).then(dataService.load);
+  }).then($scope.setupStatus).then($scope.setupWage).then($scope.setupUnit).then(dataService.load);
   
   // Code from Crossfilter example website.
   
@@ -237,27 +309,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     
   // Disable transitions for real interactive filtering
   dc.disableTransitions = true;
-    
-  wageHistogram = dc.barChart('#wage-histogram-chart')
-    .height(180)
-    .margins({top: 20, right: 10, bottom: 20, left: 50})
-    .dimension(wage)
-    .group(wages)
-    .centerBar(true)
-    .gap(1)
-    .x(d3.scale.linear().domain([10000, 500000 ]))
-    .elasticY(true);
-    
-  wageHistogram.xAxis().ticks(5);
-
-  dc.rowChart('#wage-unit-chart')
-    .height(180)
-    .margins({top: 20, left: 10, right: 10, bottom: 20})
-    .group(wageUnits)
-    .dimension(wageUnit)
-    .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
-    .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
-    .elasticX(true);
     
   dc.renderAll();
   

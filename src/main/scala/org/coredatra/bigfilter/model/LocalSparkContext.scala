@@ -11,7 +11,7 @@ import net.liftmodules.ng.Angular._
 import au.com.bytecode.opencsv.CSVParser
 
 object LocalSparkContext {
-  val conf = new SparkConf().setAppName("H1-B Filter").setMaster("local")
+  val conf = new SparkConf().setAppName("H1-B Filter").setMaster("local[4]")
   val sc = new SparkContext(conf)
   val splitFiles = sc.textFile("data/LCA_FY2013.csv")
     .union(sc.textFile("data/H-1B_FY14_Q4.csv"))
@@ -47,6 +47,7 @@ object LocalSparkContext {
       })
     
   val data: scala.collection.mutable.Map[Seq[Dimension], RDD[Data]] = scala.collection.mutable.Map()
+  val diff: scala.collection.mutable.Map[Diff, RDD[Data]] = scala.collection.mutable.Map()
   
   def dataRDD = (dimensions:Seq[Dimension]) => {
   
@@ -63,3 +64,4 @@ object LocalSparkContext {
 }
 
 case class Data(keys: Seq[String], values: Seq[Long], newRec: Boolean) extends NgModel
+case class Diff(oldDimensions: Seq[Dimension], newDimensions: Seq[Dimension])

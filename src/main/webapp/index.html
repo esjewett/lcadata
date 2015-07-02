@@ -11,19 +11,24 @@
               <div id="charts">
                 <div class="row">
                   <div id="status-chart" class="chart col-md-4" ng-show="showStatus">
-                    <div class="title">Status</div>
+                    <div class="title">Application Status (<a ng-click="removeStatus()">remove</a>)</div>
                   </div>
 <!--                  <div id="class-chart" class="chart col-md-4">
                     <div class="title">Visa class</div>
                   </div>-->
-                  <div id="wage-unit-chart" class="chart col-md-4">
-                    <div class="title">Wage Unit</div>
+                  <div id="wage-unit-chart" class="chart col-md-4" ng-show="showUnit">
+                    <div class="title">Wage Unit (<a ng-click="removeUnit()">remove</a>)</div>
                   </div>
 <!--                  <div id="full-time-chart" class="chart col-md-4">
                     <div class="title">Full time?</div>
                   </div>-->
-                  <div id="wage-histogram-chart" class="chart col-md-4">
-                    <div class="title">Wage Distribution</div>
+                  <div id="wage-histogram-chart" class="chart col-md-4" ng-show="showWage">
+                    <div class="title">Wage Distribution rounded to nearest $10,000 (<a ng-click="removeWage()">remove</a>)</div>
+                  </div>
+                  <div class="col-md-4" ng-show="topRowCount < 3">
+                    <button class="btn btn-default" ng-click="initStatus()" ng-show="!showStatus">Show Application Status</button>
+                    <button class="btn btn-default" ng-click="initUnit()" ng-show="!showUnit">Show Wage Unit</button>
+                    <button class="btn btn-default" ng-click="initWage()" ng-show="!showWage">Show Wage</button>
                   </div>
                 </div>
 <!--                <div class="row">

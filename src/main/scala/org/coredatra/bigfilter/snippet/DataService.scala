@@ -16,6 +16,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
 import org.coredatra.bigfilter.model.Data
+import org.coredatra.bigfilter.model.Diff
 
 case class Dimensions(dimensions: List[Dimension]) extends NgModel
 
@@ -55,14 +56,16 @@ class DataService {
       val oldRdd = LocalSparkContext.data.getOrElse(ActiveDimension.oldDimensions.is, LocalSparkContext.dataRDD(ActiveDimension.oldDimensions.is))
       println("Active dimensions in load: " + ActiveDimension.dimensions.is.length)
       val newRdd = LocalSparkContext.data.getOrElseUpdate(ActiveDimension.dimensions.is, LocalSparkContext.dataRDD(ActiveDimension.dimensions.is))
+      val diff = Diff(ActiveDimension.oldDimensions.is, ActiveDimension.dimensions.is)
+      val diffRdd = LocalSparkContext.diff.getOrElseUpdate(diff, oldRdd.map((data) => {
+          Data(data.keys, data.values.map((v) => { v * -1 }), false)
+        }).union(newRdd).sortBy((d) => d.keys.mkString))
     
       println("Old context count: " + oldRdd.count())  
       println("New context count: " + newRdd.count())
       
       val combinedRdd = if(ActiveDimension.oldDimensions.is.length > 0) {
-        oldRdd.map((data) => {
-          Data(data.keys, data.values.map((v) => { v * -1 }), false)
-        }).union(newRdd).sortBy((d) => d.keys.mkString)
+        diffRdd
       } else {
         newRdd
       }

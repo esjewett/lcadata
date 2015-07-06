@@ -13,4 +13,4 @@ src_managed/
 project/boot/
 project/plugins/project/
 
-data
+data/*.csv

@@ -25,14 +25,12 @@ class DataService {
   def services = renderIfNotAlreadyDefined(angular.module("DataServices").factory("dataService", jsObjFactory()
     .jsonCall("addDimension", (dimension: Dimension) => {
       if(!ActiveDimension.dimensions.is.contains(dimension)) {
-        ActiveDimension.currentIteration += 1
         ActiveDimension.dimensions.set(ActiveDimension.dimensions.is :+ dimension)
       }
       println(ActiveDimension.dimensions.is.length)
       Empty
     })
     .jsonCall("addDimensions", (dimensions: Dimensions) => {
-      ActiveDimension.currentIteration += 1
       for(dim <- dimensions.dimensions) {
         if(!ActiveDimension.dimensions.is.contains(dim)) {
           ActiveDimension.dimensions.set(ActiveDimension.dimensions.is :+ dim)
@@ -43,7 +41,6 @@ class DataService {
     })
     .jsonCall("removeDimension", (dimension: Dimension) => {
       if(ActiveDimension.dimensions.is.contains(dimension)) {
-        ActiveDimension.currentIteration += 1
         ActiveDimension.dimensions.set(ActiveDimension.dimensions.is.filter(
           (dim) => { dim != dimension }
         ))
@@ -53,24 +50,36 @@ class DataService {
     })
     .jsonCall("load", {
     
-      val oldRdd = LocalSparkContext.data.getOrElse(ActiveDimension.oldDimensions.is, LocalSparkContext.dataRDD(ActiveDimension.oldDimensions.is))
-      println("Active dimensions in load: " + ActiveDimension.dimensions.is.length)
-      val newRdd = LocalSparkContext.data.getOrElseUpdate(ActiveDimension.dimensions.is, LocalSparkContext.dataRDD(ActiveDimension.dimensions.is))
-      val diff = Diff(ActiveDimension.oldDimensions.is, ActiveDimension.dimensions.is)
+      val newDimensions = ActiveDimension.dimensions.is
+      val oldIteration = (ActiveDimension.iteration.is + 1).toString
+      ActiveDimension.iteration(ActiveDimension.iteration.is + 2)
+      val oldDimensions = ActiveDimension.oldDimensions.is
+      val newIteration = ActiveDimension.iteration.is.toString
+      ActiveDimension.oldDimensions(newDimensions)
+    
+      val oldRdd = LocalSparkContext.data.getOrElse(oldDimensions, LocalSparkContext.dataRDD(oldDimensions))
+      println("Active dimensions in load: " + newDimensions.length)
+      val newRdd = LocalSparkContext.data.getOrElseUpdate(newDimensions, LocalSparkContext.dataRDD(newDimensions))
+      val diff = Diff(oldDimensions, newDimensions)
       val diffRdd = LocalSparkContext.diff.getOrElseUpdate(diff, oldRdd.map((data) => {
           Data(data.keys, data.values.map((v) => { v * -1 }), false)
         }).union(newRdd).sortBy((d) => d.keys.mkString))
-    
-      println("Old context count: " + oldRdd.count())  
-      println("New context count: " + newRdd.count())
+
+      // println("Old context count: " + oldRdd.count())
+      println("Old iteration: " + oldIteration) 
+      // println("New context count: " + newRdd.count())
+      println("New iteration: " + newIteration)
       
-      val combinedRdd = if(ActiveDimension.oldDimensions.is.length > 0) {
+      val combinedRdd = if(oldIteration != "1") {
         diffRdd
       } else {
-        newRdd
+        LocalSparkContext.init.getOrElse({
+          LocalSparkContext.init = Some(newRdd)
+          newRdd
+        })
       }
       
-      println("Combined context count: " + combinedRdd.count())
+      // println("Combined context count: " + combinedRdd.count())
       
       val iter = combinedRdd.toLocalIterator
     
@@ -85,28 +94,27 @@ class DataService {
           
         if(payload.length > 99999) {
           S.session.foreach(
-            (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", compress(payload)))
+            (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", compress(payload, newDimensions, oldDimensions, newIteration, oldIteration)))
           )
           payload = ArrayBuffer()
         }
       }  
       
       S.session.foreach(
-        (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", compress(payload)))
+        (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", compress(payload, newDimensions, oldDimensions, newIteration, oldIteration)))
       )
       
       S.session.foreach(
         (sess) => sess.sendCometActorMessage("DataActor", Empty, ("endAdd", Empty))
       )
       
-      payload = ArrayBuffer()
-      ActiveDimension.oldDimensions(ActiveDimension.dimensions.is) 
+      payload = ArrayBuffer() 
  
       Empty
     })
   ))
   
-  def compress = (payload: ArrayBuffer[Data]) => {
+  def compress = (payload: ArrayBuffer[Data], currentStructure: Seq[Dimension], previousStructure: Seq[Dimension], ci: String, oi: String) => {
     val compressedPayload: Map[String, Map[String, ArrayBuffer[String]]] = Map()
     
     def intToStr = (int: Int) => {
@@ -147,12 +155,18 @@ class DataService {
     
     for((data, i) <- payload.zipWithIndex) {
       data.newRec match {
-        case true => for((dim, idx) <- ActiveDimension.dimensions.is.zipWithIndex) {
-                        appendCompressed(dim.key, data.keys(idx), i)
-                      }
-        case false => for((dim, idx) <- ActiveDimension.oldDimensions.is.zipWithIndex) {
-                        appendCompressed(dim.key, data.keys(idx), i)
-                      }
+        case true => {
+            for((dim, idx) <- currentStructure.zipWithIndex) {
+              appendCompressed(dim.key, data.keys(idx), i)
+            }
+            appendCompressed("i", ci, i)
+          }
+        case false => {
+            for((dim, idx) <- previousStructure.zipWithIndex) {
+              appendCompressed(dim.key, data.keys(idx), i)
+            }
+            appendCompressed("i", oi, i)
+          }
       }
       
       appendCompressed("count", data.values(0).toString, i)

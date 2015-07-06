@@ -11,6 +11,7 @@ object ActiveDimension {
 	val emptyDim: Seq[Dimension] = Seq()
 	object dimensions extends RequestVar(emptyDim)
 	object oldDimensions extends RequestVar(emptyDim)
+	object iteration extends RequestVar(0)
 	
 	def parseFromDimensions(line: Seq[String], dimensions: Seq[Dimension]) = {
 		for(dim <- dimensions; round = dim.round.getOrElse(0)) yield {
@@ -21,9 +22,6 @@ object ActiveDimension {
 			}
 		}
 	}
-	
-	var currentIteration: Int = 0
-
 }
 
 case class Dimension(key: String, column: Int, round: Option[Int]) extends NgModel

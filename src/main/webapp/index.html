@@ -11,15 +11,13 @@
               <div id="charts">
                 <h1 class="col-md-6 col-md-offset-3">LCA Applications 2010-2014</h1>
                 <div class="row">
-                  <aside id="totals" class="col-md-3 col-md-offset-9"></aside>
+                  <aside id="totals" class="col-md-4 col-md-offset-8" ng-show="!processing"></aside>
+                  <aside class="col-md-4 col-md-offset-8" ng-show="processing">Loading data...</aside>
                 </div>
                 <div class="row">
                   <div id="status-chart" class="chart col-md-4" ng-show="showStatus">
                     <div class="title">Application Status <a ng-click="removeStatus()">remove</a></div>
                   </div>
-<!--                  <div id="class-chart" class="chart col-md-4">
-                    <div class="title">Visa class</div>
-                  </div>-->
                   <div id="wage-unit-chart" class="chart col-md-4" ng-show="showUnit">
                     <div class="title">Wage Unit <a ng-click="removeUnit()">remove</a></div>
                   </div>
@@ -32,11 +30,15 @@
                   <div id="num-positions-chart" class="chart col-md-4" ng-show="showNumPositions">
                     <div class="title">Number of positions in application <a ng-click="removeNumPositions()">remove</a></div>
                   </div>
+                  <div id="visa-class-chart" class="chart col-md-4" ng-show="showClass">
+                    <div class="title">Visa class in application <a ng-click="removeClass()">remove</a></div>
+                  </div>
                   <div id="button-area-1" class="col-md-4" ng-show="topRowCount < 3">
-                    <button class="btn btn-default" ng-click="initStatus()" ng-show="!showStatus">Show Application Status</button>
-                    <button class="btn btn-default" ng-click="initUnit()" ng-show="!showUnit">Show Wage Unit</button>
-                    <button class="btn btn-default" ng-click="initWage()" ng-show="!showWage">Show Wage</button>
-                    <button class="btn btn-default" ng-click="initNumPositions()" ng-show="!showNumPositions">Show Number of Positions</button>
+                    <button class="btn btn-default" ng-click="initStatus()" ng-show="!showStatus">Show application status</button>
+                    <button class="btn btn-default" ng-click="initUnit()" ng-show="!showUnit">Show wage unit</button>
+                    <button class="btn btn-default" ng-click="initWage()" ng-show="!showWage">Show wage</button>
+                    <button class="btn btn-default" ng-click="initNumPositions()" ng-show="!showNumPositions">Show number of positions</button>
+                    <button class="btn btn-default" ng-click="initClass()" ng-show="!showClass">Show visa class</button>
                   </div>
                 </div>
 <!--                <div class="row">
@@ -44,10 +46,10 @@
                     <div class="title">Date</div>
                   </div>
                 </div>-->
-                <div class="row" id="button-area-2">
-                  <div class="col-md-12" ng-show="!showState && !showJob">
-                    <button class="col-md-2 btn btn-default" ng-click="initState()">Show employer state</button>
-                    <button class="col-md-2 btn btn-default" ng-click="initJob()">Show job title</button>
+                <div class="row" id="button-area-2" style="text-align:center;">
+                  <div class="col-md-6 col-md-offset-3" style="margin-top:5em; margin-bottom:5em;" ng-show="!showState && !showJob">
+                    <button class="btn btn-default" ng-click="initState()">Show count by employer state</button>
+                    <button class="btn btn-default" ng-click="initJob()">Show most common job titles</button>
                   </div>
                   <div id="state-chart" class="chart col-md-12" ng-show="showState">
                     <div class="title">Employer State by Number of Applications <a ng-click="removeState()">remove</a></div>
@@ -55,6 +57,24 @@
                   <div id="job-chart" class="chart col-md-12" ng-show="showJob">
                     <div class="title">30 Most Common Job Titles <a ng-click="removeJob()">remove</a></div>
                   </div>
+                </div>
+                <div class="row">
+                  <h3>About the data</h3>
+                  <p>This dataset is taken from the U.S Dept. of Labor Foreign Labor Certification information on Labor Condition Applications (LCAs). This data is available from <a href="http://www.foreignlaborcert.doleta.gov/performancedata.cfm#dis">http://www.foreignlaborcert.doleta.gov/performancedata.cfm#dis</a>. The data in this application covers the years 2010 - 2014, with some obviously incorrect data removed as described below.</p>
+                  <p>This same dataset appears in many other applications and publications and is often referred to as H1-B data. However, LCAs are only loosely related to H1-B applications, much less issued H1-Bs. The LCA is a required preliminary application in the H1-B application process, but it is also used in other processes and in the case of H1-B transfers. More information is available <a href="https://en.wikipedia.org/wiki/Labor_Condition_Application#Relation_with_the_application_process_for_employment_authorization_and_getting_a_visa">on Wikipedia</a>.</p>
+                  <h4>Data cleansing and transformation</h4>
+                  <p>The data available in this application has been minimally cleansed. The following steps have been taken:
+                    <ul>
+                      <li>Records where field LCA_CASE_WAGE_RATE_UNIT is not "Year", "Month", "Bi-Weekly", "Week", "Day", or "Hour" are dropped.</li>
+                      <li>Records where field LCA_CASE_WAGE_RATE_FROM is blank are dropped.</li>
+                      <li>A default filter is put on the yearly wage, restricting to applications with a yearly wage under $450,000. This is to remove applications that incorrectly listed a yearly wage (e.g. $50,000) with a unit of "Month" or "Hour", resulting in outlandish average wages, especially for Senior Software Engineers.</li>
+                      <li>Wages are rounded to the nearest $10,000 in the wage histogram, and average wages are rounded to the nearest $1000. Yearly wages outside the range of the wage histogram (lower than $10,000 or higher than $500,000) are displayed on the histogram as $10,000 or $500,000.</li>
+                      <li>Dimension values that are blank but are not mentioned above are not displayed in visualizations of the dimension but are retained in the data set and are reflected in any calculations. For example, an application for a "Software Engineer" position with a blank status dimension will be reflected in the count of "Software Engineers" as long as there is no filter in place on the status dimension.</li>
+                    </ul>
+                  </p>
+                </div>
+                <div class="row">
+                  <aside>&copy; Copyright Coredatra LLC, 2015</aside>
                 </div>
               </div>
 

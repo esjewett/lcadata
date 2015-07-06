@@ -34,6 +34,7 @@ object LocalSparkContext {
         case "Year" => (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
         case "Month" => 12 * (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
         case "Week" => 50 * (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
+        case "Bi-Weekly" => 100 * (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
         // from http://www.opm.gov/policy-data-oversight/pay-leave/pay-administration/fact-sheets/computing-hourly-rates-of-pay-using-the-2087-hour-divisor/
         case "Day" => 261 * (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
         case "Hour" => 2087 * (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
@@ -43,11 +44,13 @@ object LocalSparkContext {
     })
     .filter(line => {
         line.drop(17).head != "Select Pay Range" &&
-        line.drop(17).head != ""
+        line.drop(17).head != "" &&
+        line.drop(35).head != "0"
       })
     
   val data: scala.collection.mutable.Map[Seq[Dimension], RDD[Data]] = scala.collection.mutable.Map()
   val diff: scala.collection.mutable.Map[Diff, RDD[Data]] = scala.collection.mutable.Map()
+  var init: Option[RDD[Data]] = Option.empty
   
   def dataRDD = (dimensions:Seq[Dimension]) => {
   

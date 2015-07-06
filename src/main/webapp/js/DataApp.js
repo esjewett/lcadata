@@ -21,7 +21,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     .sum('count')(all);
   
   $scope.$on('endAdd', function(e) {
-    console.log("END");
     if(firstRun) {
       firstRun = false;
       wageHistogram.filter(dc.filters.RangedFilter(10000,450000));
@@ -48,8 +47,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   });
   
   $scope.$on('beginAdd', function(e) {
-    console.log("BEGIN");
-  
+    
   });
   
   function load() {
@@ -63,8 +61,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   var firstRun = true;
   
   $scope.$on('addData', function(e, obj) {
-    
-    console.log("ADD");
         
     var newObj = [];
     var valRanges, parsedLength, parsedStart;
@@ -91,7 +87,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     }
     
     newObj.forEach(function(d, i) {
-//      d.date = parseDate(d.date);
       d.count = +d.count;
       d.avg = +d.avg;
       d.sum = +d.sum;
@@ -183,7 +178,6 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .radiusValueAccessor(function(d) { return 100; })
       .minRadiusWithLabel(0)
       .x(d3.scale.log().domain([0, jobTitles.top(1)[0] ? jobTitles.top(1)[0] : 1 ]))
-//      .maxBubbleRelativeSize(0.05)
       .yAxisPadding(50000)
       .clipPadding(1000)
       .elasticY(true)
@@ -414,20 +408,12 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   
   
   // Setup default dimensions
-  dataService.addDimensions({
-    dimensions: [
-//        {key: "date", column: 3 },
-//        {key: "full_time", column: 19},
-    ]
-  }).then($scope.setupStatus).then($scope.setupWage).then(load);
+  $scope.setupStatus().then($scope.setupWage).then(load);
   
   // Code from Crossfilter example website.
   
   // Various formatters.
-  var formatNumber = d3.format(",d"),
-      formatChange = d3.format("+,d"),
-      formatDate = d3.time.format("%B %d, %Y"),
-      formatTime = d3.time.format("%I:%M %p");
+  var formatNumber = d3.format(",d");
       
   // Setup charts
   numberDisplay = dc.dataCount("#totals")
@@ -443,11 +429,4 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     
   dc.renderAll();
   
-  // Like d3.time.format, but faster.
-  function parseDate(d) {
-    return new Date("20" + d.split('/')[2],
-        d.split('/')[0] - 1,
-        d.split('/')[1]);
-  }
-
 }]);

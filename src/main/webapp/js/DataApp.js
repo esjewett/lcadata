@@ -1,6 +1,6 @@
 angular.module('DataApp', ['DataServices']).
 
-controller('Data', ['$scope', 'dataService', function($scope, dataService) {
+controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataService) {
   var ordinalReducer = reductio();
   ordinalReducer.value("aggCount").sum('count');
   ordinalReducer.value("aggSalary").sum('sum');
@@ -14,6 +14,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       numberDisplay, dateChart, stateChart, wageHistogram, employmentState, employmentStates,
       jobTitle, jobTitles, jobChart, statusChart, wageUnitChart,
       numPositionsChart, numPosition, numPositions,
+      occupation, occupations, occupationChart,
+      year, years, yearChart,
       visaClass, visaClasses, visaClassChart;
       
   reductio()
@@ -44,15 +46,24 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
     dc.redrawAll();
     
     $scope.processing = false;
+    resolveCurrentLoad();
   });
   
   $scope.$on('beginAdd', function(e) {
     
   });
   
+  var resolveCurrentLoad;
+  var currentLoadPromise = $q(function(resolve, reject) { resolveCurrentLoad = resolve; });
+  resolveCurrentLoad();
+  
   function load() {
     $scope.processing = true;
-    return dataService.load();
+    return currentLoadPromise.then(function() {
+      $scope.processing = true;
+      currentLoadPromise = $q(function(resolve, reject) { resolveCurrentLoad = resolve; });
+      return dataService.load();
+    });
   }
   
   $scope.topRowCount = 0;
@@ -178,7 +189,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .radiusValueAccessor(function(d) { return 100; })
       .minRadiusWithLabel(0)
       .x(d3.scale.log().domain([0, jobTitles.top(1)[0] ? jobTitles.top(1)[0] : 1 ]))
-      .yAxisPadding(50000)
+      .yAxisPadding(5000)
       .clipPadding(1000)
       .elasticY(true)
       .elasticX(true)
@@ -189,7 +200,8 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .yAxisLabel("Average Salary")
       .renderLabel(true)
       .data(function(group) { return group.top(31).filter(function(d) { return d.key !== ""; }); })
-      .label(function(d) { return d.key; });
+      .label(function(d) { return d.key; })
+      .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggAvg()) + " average salary)";});
       
     jobChart.xAxis().tickFormat(d3.format("s"));
     jobChart.yAxis().tickFormat(d3.format("s"));
@@ -200,6 +212,61 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   }
   $scope.initJob = function() {
     $scope.setupJob().then(load);
+  }
+  
+  $scope.showOccupation = false;
+  $scope.removeOccupation = function() {
+    occupationChart.svg().remove();
+    $scope.showOccupation = false;
+    dc.deregisterChart(occupationChart);
+    occupations.dispose();
+    occupation.dispose();
+    dataService.removeDimension({key: "occupation", column: 14 }).then(load);
+  }
+  $scope.setupOccupation = function () {
+    $scope.showOccupation = true;
+    
+    var promise = dataService.addDimension({key: "occupation", column: 14 });
+    occupation = visas.dimension(function(d) { return d.occupation ? d.occupation : ""; });
+    occupations = occupation.group();
+    ordinalReducer(occupations);
+    occupations.order(function(d) { return d.aggCount.sum; });
+    
+    occupationChart = dc.bubbleChart('#occupation-chart')
+      .width($("#button-area-2").width())
+      .height(600)
+      .margins({top: 5, left: 50, right: 100, bottom: 50})
+      .dimension(occupation)
+      .group(occupations)
+      .colorAccessor(function(d) { return "lightblue"; })
+      .keyAccessor(function(d) { return d.value.aggCount.sum; })
+      .valueAccessor(function(d) { return d.value.aggAvg(); })
+      .radiusValueAccessor(function(d) { return 100; })
+      .minRadiusWithLabel(0)
+      .x(d3.scale.log().domain([0, occupations.top(1)[0] ? occupations.top(1)[0] : 1 ]))
+      .yAxisPadding(5000)
+      .clipPadding(1000)
+      .elasticY(true)
+      .elasticX(true)
+      .elasticRadius(true)
+      .renderHorizontalGridLines(true)
+      .renderVerticalGridLines(true)
+      .xAxisLabel("Number of applications")
+      .yAxisLabel("Average Salary")
+      .renderLabel(true)
+      .data(function(group) { return group.top(31).filter(function(d) { return d.key !== ""; }); })
+      .label(function(d) { return d.key; })
+      .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggAvg()) + " average salary)";});
+      
+    occupationChart.xAxis().tickFormat(d3.format("s"));
+    occupationChart.yAxis().tickFormat(d3.format("s"));
+      
+    occupationChart.render();
+    
+    return promise;
+  }
+  $scope.initOccupation = function() {
+    $scope.setupOccupation().then(load);
   }
   
   $scope.showStatus = false;
@@ -231,7 +298,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .labelOffsetY(function() { return 7; })
       .labelOffsetX(function() { return 5; })
       .dimension(status)
-      .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+      .ordinalColors(['#3182bd'])
       .elasticX(true);
       
     statusChart.xAxis().ticks(5).tickFormat(d3.format("s"));;
@@ -269,10 +336,10 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .dimension(wage)
       .group(wages)
       .x(d3.scale.linear().domain([10000, 500001]))
-      .xUnits(function() { return wages.all().length; })
+      .yAxisLabel("# of applications")
       .elasticY(true);
       
-    wageHistogram.xAxis().ticks(5).tickFormat(d3.format("s"));
+    wageHistogram.xAxis().ticks(5).tickFormat(d3.format("$s"));
     wageHistogram.yAxis().tickFormat(d3.format("s"));
       
     wageHistogram.render();
@@ -310,7 +377,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .dimension(wageUnit)
       .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
       .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
-      .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+      .ordinalColors(['#3182bd'])
       .elasticX(true);
       
     wageUnitChart.xAxis().ticks(5).tickFormat(d3.format("s"));
@@ -366,6 +433,46 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   }
   
   
+  $scope.showYear = false;
+  $scope.removeYear = function() {
+    yearChart.svg().remove();
+    $scope.showYear = false;
+    $scope.topRowCount -= 1;
+    dc.deregisterChart(yearChart);
+    year.dispose();
+    years.dispose();
+    dataService.removeDimension({key: "year", column: 37}).then(load);
+  }
+  $scope.setupYear = function () {
+    $scope.showYear = true;
+    $scope.topRowCount += 1;
+    
+    var promise = dataService.addDimension({key: "year", column: 37});
+    year = visas.dimension(function(d) { return d.year ? "20" + d.year : ""; });
+    years = year.group();
+    ordinalReducer(years);
+    
+    yearChart = dc.rowChart('#year-chart')
+      .height(180)
+      .width($("#button-area-1").width())
+      .margins({top: 5, left: 10, right: 10, bottom: 20})
+      .group(years)
+      .dimension(year)
+      .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
+      .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
+      .ordinalColors(['#3182bd'])
+      .elasticX(true);
+      
+    yearChart.xAxis().ticks(5);
+      
+    yearChart.render();
+    
+    return promise;
+  }
+  $scope.initYear = function() {
+    $scope.setupYear().then(load);
+  }
+  
   $scope.showClass = false;
   $scope.removeClass = function() {
     visaClassChart.svg().remove();
@@ -393,7 +500,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
       .dimension(visaClass)
       .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
       .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
-      .ordinalColors(['#3182bd', '#6baed6', '#9ecae1', '#c6dbef', '#dadaeb'])
+      .ordinalColors(['#3182bd'])
       .elasticX(true);
       
     visaClassChart.xAxis().ticks(5);
@@ -418,6 +525,7 @@ controller('Data', ['$scope', 'dataService', function($scope, dataService) {
   // Setup charts
   numberDisplay = dc.dataCount("#totals")
     .dimension({ size: function() { return 2078573; } })
+    //.dimension({ size: function() { return all.value()[0] ? all.value()[0].value.sum : 0; } })
     .group({ value: function() { return all.value()[0] ? all.value()[0].value.sum : 0; }})
     .html({
       some: '%filter-count out of %total-count applications displayed',

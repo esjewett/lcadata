@@ -13,11 +13,11 @@ import au.com.bytecode.opencsv.CSVParser
 object LocalSparkContext {
   val conf = new SparkConf().setAppName("H1-B Filter").setMaster("local[4]")
   val sc = new SparkContext(conf)
-  val splitFiles = sc.textFile("data/LCA_FY2013.csv")
-    .union(sc.textFile("data/H-1B_FY14_Q4.csv"))
-    .union(sc.textFile("data/LCA_FY2012_Q4.csv"))
-    .union(sc.textFile("data/H-1B_iCert_LCA_FY2011_Q4.csv"))
-    .union(sc.textFile("data/H-1B_FY2010.csv"))
+  val splitFiles = sc.textFile("/data/lca/LCA_FY2013.csv")
+    .union(sc.textFile("/data/lca/H-1B_FY14_Q4.csv"))
+    .union(sc.textFile("/data/lca/LCA_FY2012_Q4.csv"))
+    .union(sc.textFile("/data/lca/H-1B_iCert_LCA_FY2011_Q4.csv"))
+    .union(sc.textFile("/data/lca/H-1B_FY2010.csv"))
     .map(line => {
       val parser = new CSVParser(',')
       var ret:Seq[String] = Seq()
@@ -40,7 +40,9 @@ object LocalSparkContext {
         case "Hour" => 2087 * (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })
         case _ => 0
       }
-      line :+ amount.round.toString
+      val date = line.drop(2).head
+      val year = date.slice(date.length - 2, date.length)
+      line :+ amount.round.toString :+ year
     })
     .filter(line => {
         line.drop(17).head != "Select Pay Range" &&

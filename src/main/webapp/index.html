@@ -9,10 +9,10 @@
             <div data-lift="comet?type=DataActor"></div>
   	        <div class="container">
               <div id="charts">
-                <h1 class="col-md-6 col-md-offset-3">LCA Applications 2010-2014</h1>
+                <h1 class="col-md-12" style="text-align:center;">Labor Condition Applications 2010-2014</h1>
                 <div class="row">
                   <aside id="totals" class="col-md-4 col-md-offset-8" ng-show="!processing"></aside>
-                  <aside class="col-md-4 col-md-offset-8" ng-show="processing">Loading data...</aside>
+                  <aside class="col-md-4 col-md-offset-8" ng-show="processing">Loading data (sometimes can take a while)...</aside>
                 </div>
                 <div class="row">
                   <div id="status-chart" class="chart col-md-4" ng-show="showStatus">
@@ -30,24 +30,32 @@
                   <div id="visa-class-chart" class="chart col-md-4" ng-show="showClass">
                     <div class="title">Visa class in application <a ng-click="removeClass()">remove</a></div>
                   </div>
+                  <div id="year-chart" class="chart col-md-4" ng-show="showYear">
+                    <div class="title">Year of application submission <a ng-click="removeYear()">remove</a></div>
+                  </div>
                   <div id="button-area-1" class="col-md-4" ng-show="topRowCount < 3">
                     <button class="btn btn-default" ng-click="initStatus()" ng-show="!showStatus">Show application status</button>
                     <button class="btn btn-default" ng-click="initUnit()" ng-show="!showUnit">Show wage unit</button>
                     <button class="btn btn-default" ng-click="initWage()" ng-show="!showWage">Show wage</button>
                     <button class="btn btn-default" ng-click="initNumPositions()" ng-show="!showNumPositions">Show number of positions</button>
                     <button class="btn btn-default" ng-click="initClass()" ng-show="!showClass">Show visa class</button>
+                    <button class="btn btn-default" ng-click="initYear()" ng-show="!showClass">Show year</button>
                   </div>
                 </div>
                 <div class="row" id="button-area-2" style="text-align:center;">
-                  <div class="col-md-6 col-md-offset-3" style="margin-top:5em; margin-bottom:5em;" ng-show="!showState && !showJob">
+                  <div class="col-md-8 col-md-offset-2" style="margin-top:5em; margin-bottom:5em;" ng-show="!showState && !showJob && !showOccupation">
                     <button class="btn btn-default" ng-click="initState()">Show count by employer state</button>
-                    <button class="btn btn-default" ng-click="initJob()">Show most common job titles</button>
+                    <button class="btn btn-default" ng-click="initOccupation()">Show most common occupations</button>
+                    <button class="btn btn-default" ng-click="initJob()">Show most common job titles (can be slow to load)</button>
                   </div>
                   <div id="state-chart" class="chart col-md-12" ng-show="showState">
                     <div class="title">Employer State by Number of Applications <a ng-click="removeState()">remove</a></div>
                   </div>
                   <div id="job-chart" class="chart col-md-12" ng-show="showJob">
                     <div class="title">30 Most Common Job Titles <a ng-click="removeJob()">remove</a></div>
+                  </div>
+                  <div id="occupation-chart" class="chart col-md-12" ng-show="showOccupation">
+                    <div class="title">30 Most Common Occupations <a ng-click="removeOccupation()">remove</a></div>
                   </div>
                 </div>
                 <div class="row">
@@ -59,6 +67,7 @@
                     <ul>
                       <li>Records where field LCA_CASE_WAGE_RATE_UNIT is not "Year", "Month", "Bi-Weekly", "Week", "Day", or "Hour" are dropped.</li>
                       <li>Records where field LCA_CASE_WAGE_RATE_FROM is blank are dropped.</li>
+                      <li>The wage we use is the LCA_CASE_WAGE_RATE_FROM field. LCAs actually provide a wage range, but using the lower end of this range seems appropriate because the wage should at least match the prevailing wage and therefore it would not make sense to propose a minimum wage lower than the prevailing wage.</li>
                       <li>A default filter is put on the yearly wage, restricting to applications with a yearly wage under $450,000. This is to remove applications that incorrectly listed a yearly wage (e.g. $50,000) with a unit of "Month" or "Hour", resulting in outlandish average wages, especially for Senior Software Engineers.</li>
                       <li>Wages are rounded to the nearest $10,000 in the wage histogram, and average wages are rounded to the nearest $1000. Yearly wages outside the range of the wage histogram (lower than $10,000 or higher than $500,000) are displayed on the histogram as $10,000 or $500,000.</li>
                       <li>Dimension values that are blank but are not mentioned above are not displayed in visualizations of the dimension but are retained in the data set and are reflected in any calculations. For example, an application for a "Software Engineer" position with a blank status dimension will be reflected in the count of "Software Engineers" as long as there is no filter in place on the status dimension.</li>
@@ -67,7 +76,8 @@
                 </div>
                 <div class="row">
                   <h3>About the site</h3>
-                  <p>This site was built by Ethan Jewett using <a href="https://spark.apache.org">Spark (data processing)</a>, <a href="http://liftweb.net">Lift</a>, <a href="https://github.com/joescii/lift-ng">lift-ng</a>, <a href="https://angularjs.org">Angular.js</a>, <a href="http://square.github.io/crossfilter/">Crossfilter</a> (actually using a <a href="http://crossfilter.github.io/crossfilter/">community fork</a>), and <a href="">dc.js</a>. You can see the code, fork it, or send a pull request <a href="https://github.com/esjewett/lcadata">on Github</a>. The site was developed as an example of an application providing fast, interactive, client-side filtering capabilities on a dataset too large to manage in the browser (nearly a gigabyte in the case of the LCA 2010-2014 data set).</p>
+                  <p>This site was built by <a href="https://github.com/esjewett">Ethan Jewett</a></a> using <a href="https://spark.apache.org">Spark (data processing)</a>, <a href="http://liftweb.net">Lift</a>, <a href="https://github.com/joescii/lift-ng">lift-ng</a>, <a href="https://angularjs.org">Angular.js</a>, <a href="http://square.github.io/crossfilter/">Crossfilter</a> (a <a href="http://crossfilter.github.io/crossfilter/">community fork</a> of the original project), <a href="https://github.com/esjewett/reductio">Reductio</a>, and <a href="">dc.js</a>. You can see the code, fork it, or send a pull request <a href="https://github.com/esjewett/lcadata">on Github</a>.</p>
+                  <p>The site was developed as an example of an application providing fast, interactive, client-side filtering capabilities on a dataset too large to manage in the browser (nearly a gigabyte and over 2 million records in the case of the LCA 2010-2014 data set). When visualization dimensions are added or removed, the application calculates a pre-aggregated version of the data along the displayed dimensions, calculates a delta against what is already displayed in the browser, then sends the delta to the client. The use of a delta allows us to keep the client application relatively interactive during the update process. The pre-aggregation allows us to limit the amount of data managed in the browser depending on the dimensions displayed. You may notice that some dimensions, such as job titles, take longer to update and result in slower client-side filtering. This happens because these dimensions are higher cardinality, resulting in a larger data set to be managed on the client.</p>
                   <p>If you have an idea for a new view of the data that is not available here or an improvement to an existing view, <a href="https://github.com/esjewett/lcadata/issues">file an issue on Github</a>. The application is a work in progress.</p>
                 </div>
                 <div class="row">

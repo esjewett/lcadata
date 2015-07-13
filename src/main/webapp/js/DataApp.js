@@ -46,6 +46,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.redrawAll();
     
     $scope.processing = false;
+    $scope.steps--;
     resolveCurrentLoad();
   });
   
@@ -67,6 +68,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
   }
   
   $scope.topRowCount = 0;
+  $scope.steps = 0;  // Active navigation steps
   $scope.processing = false;
   
   var firstRun = true;
@@ -119,6 +121,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(stateChart);
     employmentStates.dispose();
     employmentState.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "employment_state", column: 11 }).then(load);
   }
   $scope.setupState = function() {
@@ -156,6 +159,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initState = function() {
+    $scope.steps++;
     $scope.setupState().then(load);
   }
   
@@ -166,6 +170,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(jobChart);
     jobTitles.dispose();
     jobTitle.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "job_title", column: 15 }).then(load);
   }
   $scope.setupJob = function () {
@@ -211,6 +216,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initJob = function() {
+    $scope.steps++;
     $scope.setupJob().then(load);
   }
   
@@ -221,6 +227,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(occupationChart);
     occupations.dispose();
     occupation.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "occupation", column: 14 }).then(load);
   }
   $scope.setupOccupation = function () {
@@ -266,6 +273,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initOccupation = function() {
+    $scope.steps++;
     $scope.setupOccupation().then(load);
   }
   
@@ -277,6 +285,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(statusChart);
     status.dispose();
     statuses.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "status", column: 2 }).then(load);
   }
   $scope.setupStatus = function () {
@@ -308,6 +317,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initStatus = function() {
+    $scope.steps++;
     $scope.setupStatus().then(load);
   }
   
@@ -319,6 +329,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(wageHistogram);
     wage.dispose();
     wages.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "wage_from", column: 36, round: 10000 }).then(load);
   }
   $scope.setupWage = function () {
@@ -347,6 +358,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initWage = function() {
+    $scope.steps++;
     $scope.setupWage().then(load);
   }
   
@@ -358,6 +370,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(wageUnitChart);
     wageUnit.dispose();
     wageUnits.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "wage_unit", column: 18 }).then(load);
   }
   $scope.setupUnit = function () {
@@ -387,6 +400,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initUnit = function() {
+    $scope.steps++;
     $scope.setupUnit().then(load);
   }
   
@@ -398,6 +412,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(numPositionsChart);
     numPosition.dispose();
     numPositions.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "num_positions", column: 20 }).then(load);
   }
   $scope.setupNumPositions = function () {
@@ -429,6 +444,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initNumPositions = function() {
+    $scope.steps++;
     $scope.setupNumPositions().then(load);
   }
   
@@ -441,6 +457,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(yearChart);
     year.dispose();
     years.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "year", column: 37}).then(load);
   }
   $scope.setupYear = function () {
@@ -470,6 +487,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initYear = function() {
+    $scope.steps++;
     $scope.setupYear().then(load);
   }
   
@@ -481,6 +499,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.deregisterChart(visaClass);
     visaClass.dispose();
     visaClasses.dispose();
+    $scope.steps++;
     dataService.removeDimension({key: "visa_class", column: 5}).then(load);
   }
   $scope.setupClass = function () {
@@ -510,14 +529,14 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     return promise;
   }
   $scope.initClass = function() {
+    $scope.steps++;
     $scope.setupClass().then(load);
   }
   
   
   // Setup default dimensions
+  $scope.steps++;
   $scope.setupStatus().then($scope.setupWage).then(load);
-  
-  // Code from Crossfilter example website.
   
   // Various formatters.
   var formatNumber = d3.format(",d");

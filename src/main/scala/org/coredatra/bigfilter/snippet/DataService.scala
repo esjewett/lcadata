@@ -27,7 +27,7 @@ class DataService {
       if(!ActiveDimension.dimensions.is.contains(dimension)) {
         ActiveDimension.dimensions.set(ActiveDimension.dimensions.is :+ dimension)
       }
-      println(ActiveDimension.dimensions.is.length)
+      // println(ActiveDimension.dimensions.is.length)
       Empty
     })
     .jsonCall("addDimensions", (dimensions: Dimensions) => {
@@ -36,7 +36,7 @@ class DataService {
           ActiveDimension.dimensions.set(ActiveDimension.dimensions.is :+ dim)
         }
       }
-      println("After: " + ActiveDimension.dimensions.is.length)
+      // println("After: " + ActiveDimension.dimensions.is.length)
       Empty
     })
     .jsonCall("removeDimension", (dimension: Dimension) => {
@@ -45,7 +45,7 @@ class DataService {
           (dim) => { dim != dimension }
         ))
       }
-      println(ActiveDimension.dimensions.is.length)
+      // println(ActiveDimension.dimensions.is.length)
       Empty
     })
     .jsonCall("load", {
@@ -57,26 +57,22 @@ class DataService {
       val newIteration = ActiveDimension.iteration.is.toString
       ActiveDimension.oldDimensions(newDimensions)
     
-      val oldRdd = LocalSparkContext.data.getOrElse(oldDimensions, LocalSparkContext.dataRDD(oldDimensions))
-      println("Active dimensions in load: " + newDimensions.length)
+      lazy val oldRdd = LocalSparkContext.data.getOrElse(oldDimensions, LocalSparkContext.dataRDD(oldDimensions))
+      // println("Active dimensions in load: " + newDimensions.length)
       val newRdd = LocalSparkContext.data.getOrElseUpdate(newDimensions, LocalSparkContext.dataRDD(newDimensions))
       val diff = Diff(oldDimensions, newDimensions)
-      val diffRdd = LocalSparkContext.diff.getOrElseUpdate(diff, oldRdd.map((data) => {
-          Data(data.keys, data.values.map((v) => { v * -1 }), false)
-        }).union(newRdd).sortBy((d) => d.keys.mkString))
 
       // println("Old context count: " + oldRdd.count())
-      println("Old iteration: " + oldIteration) 
+      // println("Old iteration: " + oldIteration) 
       // println("New context count: " + newRdd.count())
-      println("New iteration: " + newIteration)
+      // println("New iteration: " + newIteration)
       
       val combinedRdd = if(oldIteration != "1") {
-        diffRdd
+        LocalSparkContext.diff.getOrElseUpdate(diff, oldRdd.map((data) => {
+            Data(data.keys, data.values.map((v) => { v * -1 }), false)
+          }).union(newRdd).sortBy((d) => d.keys.mkString))
       } else {
-        LocalSparkContext.init.getOrElse({
-          LocalSparkContext.init = Some(newRdd)
-          newRdd
-        })
+        newRdd
       }
       
       // println("Combined context count: " + combinedRdd.count())

@@ -24,7 +24,8 @@ object LocalSparkContext {
       try {
         ret = parser.parseLine(line)
       } catch {
-        case e: Throwable => println("EXCEPTION: " + e)
+        // case e: Throwable => println("EXCEPTION: " + e)
+        case e: Throwable => { }
       }
       ret
     })
@@ -52,7 +53,6 @@ object LocalSparkContext {
     
   val data: scala.collection.mutable.Map[Seq[Dimension], RDD[Data]] = scala.collection.mutable.Map()
   val diff: scala.collection.mutable.Map[Diff, RDD[Data]] = scala.collection.mutable.Map()
-  var init: Option[RDD[Data]] = Option.empty
   
   def dataRDD = (dimensions:Seq[Dimension]) => {
   

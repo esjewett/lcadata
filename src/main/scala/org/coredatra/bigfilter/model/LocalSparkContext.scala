@@ -56,6 +56,8 @@ object LocalSparkContext {
   
   def dataRDD = (dimensions:Seq[Dimension]) => {
   
+    println("Generating: " + dimensions)
+  
     splitFiles
       .map(line => ( ActiveDimension.parseFromDimensions(line, dimensions),
               Seq(1, line.drop(35).head.toDouble)

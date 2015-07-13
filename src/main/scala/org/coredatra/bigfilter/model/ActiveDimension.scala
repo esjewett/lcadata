@@ -25,3 +25,4 @@ object ActiveDimension {
 }
 
 case class Dimension(key: String, column: Int, round: Option[Int]) extends NgModel
+case class Dimensions(dimensions: List[Dimension]) extends NgModel

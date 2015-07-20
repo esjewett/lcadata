@@ -348,6 +348,23 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .group(wages)
       .x(d3.scale.linear().domain([10000, 500001]))
       .yAxisLabel("# of applications")
+      .on('renderlet', function(chart, filter) {
+        var bars = d3.select(chart.svg()[0][0])
+          .selectAll('.bar');
+        var data = bars.data();
+        var total = data.reduce(function(a,b) { return a+b.data.value; }, 0);
+        var count = 0;
+        var median = 0;
+        for(var i = 0; i < data.length; i++) {
+          if(count < total/2) {
+            count += data[i].data.value;
+            if(count > total/2) {
+              median = data[i].data.key;
+            }
+          }
+        }
+        bars.filter(function(d) { return d.data.key === median; }).attr('fill', 'red');
+      })
       .elasticY(true);
       
     wageHistogram.xAxis().ticks(5).tickFormat(d3.format("$s"));

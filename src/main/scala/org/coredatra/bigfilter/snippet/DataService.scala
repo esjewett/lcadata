@@ -53,6 +53,8 @@ class DataService {
     })
     .jsonCall("load", {
     
+      LocalSparkContext.sc.setLocalProperty("spark.scheduler.pool", "interactive")
+    
       val newDimensions = ActiveDimension.dimensions.is
       val oldIteration = (ActiveDimension.iteration.is + 1).toString
       ActiveDimension.iteration(ActiveDimension.iteration.is + 2)

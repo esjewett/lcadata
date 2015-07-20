@@ -17,6 +17,11 @@ seq(webSettings :_*)
 // enablePlugins(ContainerPlugin)
 
 unmanagedResourceDirectories in Test <+= (baseDirectory) { _ / "src/main/webapp" }
+unmanagedResourceDirectories in Compile += file("resources")
+unmanagedResourceDirectories in Runtime += file("resources")
+// webappResources <<= baseDirectory { bd => Seq(bd / "src" / "main" / "resources" ) }
+// configurationFiles in container.Configuration := Seq(file("src/main/resources/fairscheduler.xml"))
+// env in Compile := Some(file(".") / "src" / "main" / "resources" / "fairscheduler.xml" asFile)
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 

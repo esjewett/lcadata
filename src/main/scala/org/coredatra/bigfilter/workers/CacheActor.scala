@@ -15,6 +15,8 @@ object CacheActor extends LiftActor { self =>
         dimensions.dimensions.toSet.subsets(3) ++
         dimensions.dimensions.toSet.subsets(4)
         
+      LocalSparkContext.sc.setLocalProperty("spark.scheduler.pool", "lowPriority")
+      
       // Prepopulate RDD map
       for(set <- dimCombos) {
         LocalSparkContext.data.getOrElseUpdate(set.toList, LocalSparkContext.dataRDD(set.toList))

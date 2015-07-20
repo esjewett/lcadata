@@ -58,6 +58,5 @@ class Boot {
 
     net.liftmodules.ng.AngularJS.init()
     net.liftmodules.ng.Angular.init()
-    
   }
 }

@@ -6,12 +6,30 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 
+import net.liftweb.http.LiftRules
+
 import net.liftmodules.ng.Angular._
 
 import au.com.bytecode.opencsv.CSVParser
 
 object LocalSparkContext {
-  val conf = new SparkConf().setAppName("H1-B Filter").setMaster("local[4]")
+  val conf = new SparkConf()
+    .setAppName("LCA Filter")
+    .setMaster("local[3]")
+    .set("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
+    .set("spark.executor.memory", "2g")
+    .set("spark.scheduler.mode", "FAIR")
+    .set("spark.shuffle.consolidateFiles", "true")
+    
+  // This is a freaking mess. LiftRules.getResource appears to return the
+  // correct path, but Spark throws a file not found exception and everything
+  // blows up. For the moment just putting the config file with the data :-/
+  for(url <- LiftRules.getResource("/fairscheduler.xml")) {
+    println("Loading fair scheduler config from: " + url)
+    // conf.set("spark.scheduler.allocation.file", url.toString)
+  }
+  conf.set("spark.scheduler.allocation.file", "/data/lca/fairscheduler.xml")
+    
   val sc = new SparkContext(conf)
   val splitFiles = sc.textFile("/data/lca/LCA_FY2013.csv")
     .union(sc.textFile("/data/lca/H-1B_FY14_Q4.csv"))
@@ -57,6 +75,7 @@ object LocalSparkContext {
   def dataRDD = (dimensions:Seq[Dimension]) => {
   
     println("Generating: " + dimensions)
+    println("With pool:" + sc.getLocalProperty("spark.scheduler.pool"))
   
     splitFiles
       .map(line => ( ActiveDimension.parseFromDimensions(line, dimensions),

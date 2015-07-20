@@ -348,7 +348,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .group(wages)
       .x(d3.scale.linear().domain([10000, 500001]))
       .yAxisLabel("# of applications")
-      .on('renderlet', function(chart, filter) {
+      .on('pretransition', function(chart, filter) {
         var bars = d3.select(chart.svg()[0][0])
           .selectAll('.bar');
         var data = bars.data();
@@ -363,7 +363,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
             }
           }
         }
-        bars.filter(function(d) { return d.data.key === median; }).attr('fill', 'red');
+        bars.filter(function(d) { return d.data.key === median; }).attr('fill', 'darkred');
       })
       .elasticY(true);
       

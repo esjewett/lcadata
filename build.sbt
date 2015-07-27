@@ -26,7 +26,7 @@ unmanagedResourceDirectories in Runtime += file("resources")
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
 libraryDependencies ++= {
-  val liftVersion = "3.0-M5-1"
+  val liftVersion = "3.0-M6"
   val liftEdition = liftVersion.substring(0,3)
   Seq(
     "net.liftweb"             %% "lift-webkit"                        % liftVersion           % "compile",

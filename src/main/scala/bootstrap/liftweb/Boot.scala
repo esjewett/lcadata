@@ -11,7 +11,8 @@ import Loc._
 import net.liftmodules.JQueryModule
 import net.liftweb.http.js.jquery._
 
-import org.coredatra.bigfilter.model.LocalSparkContext
+import org.coredatra.bigfilter.model._
+import org.coredatra.bigfilter.workers.CacheActor
 
 
 /**
@@ -58,5 +59,17 @@ class Boot {
 
     net.liftmodules.ng.AngularJS.init()
     net.liftmodules.ng.Angular.init()
+    
+    val dimensions = Dimensions(List(Dimension("visa_class", 5, Empty),
+        Dimension("employment_state", 11, Empty),
+        Dimension("job_title", 15, Empty),
+        Dimension("occupation", 14, Empty),
+        Dimension("status", 2, Empty),
+        Dimension("wage_from", 36, Full(10000)),
+        Dimension("wage_unit", 18, Empty),
+        Dimension("num_positions", 20, Empty),
+        Dimension("year", 37, Empty)))
+    
+    CacheActor ! ("preRegister", dimensions)
   }
 }

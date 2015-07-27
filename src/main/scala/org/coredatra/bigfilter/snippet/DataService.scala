@@ -11,7 +11,6 @@ import net.liftweb.json._
 import Helpers._
 
 import model._
-import workers._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
@@ -36,10 +35,6 @@ class DataService {
         }
       }
       // println("After: " + ActiveDimension.dimensions.is.length)
-      Empty
-    })
-    .jsonCall("preRegisterDimensions", (dimensions: Dimensions) => {
-      CacheActor ! ("preRegister", dimensions)
       Empty
     })
     .jsonCall("removeDimension", (dimension: Dimension) => {

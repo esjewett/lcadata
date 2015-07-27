@@ -550,19 +550,6 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupClass().then(load);
   }
   
-  dataService.preRegisterDimensions({
-    dimensions: [
-      {key: "visa_class", column: 5},
-      {key: "employment_state", column: 11 },
-      {key: "job_title", column: 15 },
-      {key: "occupation", column: 14 },
-      {key: "status", column: 2 },
-      {key: "wage_from", column: 36, round: 10000 },
-      {key: "wage_unit", column: 18 },
-      {key: "num_positions", column: 20 },
-      {key: "year", column: 37}
-    ]});
-  
   // Setup default dimensions
   $scope.steps++;
   $scope.setupStatus().then($scope.setupWage).then(load);

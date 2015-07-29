@@ -34,14 +34,24 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     
     // For now we need to remove all filters, then remove data. This is because of a bug
     // in crossfilter.remove() where it doesn't work correctly if filters are applied.
-    var filters = dc.chartRegistry.list().map(function(c) { return c.filter(); });
+    var filters = dc.chartRegistry.list().map(function(c) { return c.filters(); });
     dc.filterAll();
     
     // Remove unnecessary data
     visas.remove(function(d) { return d.i === maxIter; });
     
     // Add filters back
-    dc.chartRegistry.list().forEach(function(c, i) { c.filter(filters[i]); });
+    dc.chartRegistry.list().forEach(function(c, i) {
+      if(typeof filters[i][0] === 'string') {
+        // Assume ordinal filter special case.
+        c.filter([filters[i]]); // Note surrounding array!!
+      } else {
+        if(filters[i][0]) {
+          // Assume ranged filter.
+          c.filter(filters[i][0]); 
+        }
+      }
+    });
     
     dc.redrawAll();
     
@@ -114,6 +124,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dc.redrawAll();
   });
   
+  var stateDimension = {key: "employment_state", column: 11 };
   $scope.showState = false;
   $scope.removeState = function() {
     stateChart.svg().remove();
@@ -122,11 +133,11 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     employmentStates.dispose();
     employmentState.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "employment_state", column: 11 }).then(load);
+    dataService.removeDimension(stateDimension).then(load);
   }
   $scope.setupState = function() {
     
-    var promise = dataService.addDimension({key: "employment_state", column: 11 });
+    var promise = dataService.addDimension(stateDimension);
     employmentState = visas.dimension(function(d) { return d.employment_state ? d.employment_state : ""; });
     employmentStates = employmentState.group();
     ordinalReducer(employmentStates);
@@ -154,6 +165,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
         })
         .on('preRedraw', function(chart){ chart.calculateColorDomain(); });
       stateChart.render();
+      stateChart.jsonDimension = stateDimension;
     });
     
     return promise;
@@ -162,7 +174,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.steps++;
     $scope.setupState().then(load);
   }
-    
+  
+  var jobDimension = {key: "job_title", column: 15 };
   $scope.showJob = false;
   $scope.removeJob = function() {
     jobChart.svg().remove();
@@ -171,12 +184,12 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     jobTitles.dispose();
     jobTitle.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "job_title", column: 15 }).then(load);
+    dataService.removeDimension(jobDimension).then(load);
   }
   $scope.setupJob = function () {
     $scope.showJob = true;
     
-    var promise = dataService.addDimension({key: "job_title", column: 15 });
+    var promise = dataService.addDimension(jobDimension);
     jobTitle = visas.dimension(function(d) { return d.job_title ? d.job_title : ""; });
     jobTitles = jobTitle.group();
     ordinalReducer(jobTitles);
@@ -210,6 +223,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       
     jobChart.xAxis().tickFormat(d3.format("s"));
     jobChart.yAxis().tickFormat(d3.format("s"));
+    jobChart.jsonDimension = jobDimension;
       
     jobChart.render();
     
@@ -220,6 +234,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupJob().then(load);
   }
   
+  var occupationDimension = {key: "occupation", column: 14 };
   $scope.showOccupation = false;
   $scope.removeOccupation = function() {
     occupationChart.svg().remove();
@@ -228,12 +243,12 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     occupations.dispose();
     occupation.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "occupation", column: 14 }).then(load);
+    dataService.removeDimension(occupationDimension).then(load);
   }
   $scope.setupOccupation = function () {
     $scope.showOccupation = true;
     
-    var promise = dataService.addDimension({key: "occupation", column: 14 });
+    var promise = dataService.addDimension(occupationDimension);
     occupation = visas.dimension(function(d) { return d.occupation ? d.occupation : ""; });
     occupations = occupation.group();
     ordinalReducer(occupations);
@@ -267,6 +282,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       
     occupationChart.xAxis().tickFormat(d3.format("s"));
     occupationChart.yAxis().tickFormat(d3.format("s"));
+    occupationChart.jsonDimension = occupationDimension;
       
     occupationChart.render();
     
@@ -277,6 +293,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupOccupation().then(load);
   }
   
+  var statusDimension = {key: "status", column: 2 };
   $scope.showStatus = false;
   $scope.removeStatus = function() {
     statusChart.svg().remove();
@@ -286,13 +303,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     status.dispose();
     statuses.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "status", column: 2 }).then(load);
+    dataService.removeDimension(statusDimension).then(load);
   }
   $scope.setupStatus = function () {
     $scope.showStatus = true;
     $scope.topRowCount += 1;
     
-    var promise = dataService.addDimension({key: "status", column: 2 });
+    var promise = dataService.addDimension(statusDimension);
     status = visas.dimension(function(d) { return d.status ? d.status : ""; });
     statuses = status.group();
     ordinalReducer(statuses);
@@ -311,6 +328,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .elasticX(true);
       
     statusChart.xAxis().ticks(5).tickFormat(d3.format("s"));;
+    
+    statusChart.jsonDimension = statusDimension;
       
     statusChart.render();
     
@@ -321,6 +340,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupStatus().then(load);
   }
   
+  var wageDimension = {key: "wage_from", column: 36, round: 10000 };
   $scope.showWage = false;
   $scope.removeWage = function() {
     wageHistogram.svg().remove();
@@ -330,13 +350,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     wage.dispose();
     wages.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "wage_from", column: 36, round: 10000 }).then(load);
+    dataService.removeDimension(wageDimension).then(load);
   }
   $scope.setupWage = function () {
     $scope.showWage = true;
     $scope.topRowCount += 1;
     
-    var promise = dataService.addDimension({key: "wage_from", column: 36, round: 10000 });
+    var promise = dataService.addDimension(wageDimension);
     wage = visas.dimension(function(d) { return d.wage_from ? Math.min(Math.max(+d.wage_from, 10000),500000) : 0; });
     wages = wage.group(function(d) { return Math.min(d, 500000); }).reduceSum(function(d) { return d.count; });
     
@@ -369,6 +389,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       
     wageHistogram.xAxis().ticks(5).tickFormat(d3.format("$s"));
     wageHistogram.yAxis().tickFormat(d3.format("s"));
+    wageHistogram.jsonDimension = wageDimension;
       
     wageHistogram.render();
     
@@ -379,6 +400,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupWage().then(load);
   }
   
+  var unitDimension = {key: "wage_unit", column: 18 };
   $scope.showUnit = false;
   $scope.removeUnit = function() {
     wageUnitChart.svg().remove();
@@ -388,13 +410,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     wageUnit.dispose();
     wageUnits.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "wage_unit", column: 18 }).then(load);
+    dataService.removeDimension(unitDimension).then(load);
   }
   $scope.setupUnit = function () {
     $scope.showUnit = true;
     $scope.topRowCount += 1;
     
-    var promise = dataService.addDimension({key: "wage_unit", column: 18 });
+    var promise = dataService.addDimension(unitDimension);
     wageUnit = visas.dimension(function(d) { return d.wage_unit ? d.wage_unit : ""; });
     wageUnits = wageUnit.group();
     ordinalReducer(wageUnits);
@@ -411,6 +433,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .elasticX(true);
       
     wageUnitChart.xAxis().ticks(5).tickFormat(d3.format("s"));
+    wageUnitChart.jsonDimension = unitDimension;
       
     wageUnitChart.render();
     
@@ -421,6 +444,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupUnit().then(load);
   }
   
+  var positionsDimension = {key: "num_positions", column: 20 };
   $scope.showNumPositions = false;
   $scope.removeNumPositions = function() {
     numPositionsChart.svg().remove();
@@ -430,7 +454,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     numPosition.dispose();
     numPositions.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "num_positions", column: 20 }).then(load);
+    dataService.removeDimension(positionsDimension).then(load);
   }
   $scope.setupNumPositions = function () {
     var max = 20;
@@ -439,7 +463,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.showNumPositions = true;
     $scope.topRowCount += 1;
     
-    var promise = dataService.addDimension({key: "num_positions", column: 20 });
+    var promise = dataService.addDimension(positionsDimension);
     numPosition = visas.dimension(function(d) { return d.num_positions ? Math.min(Math.max(+d.num_positions, min),max) : 0; });
     numPositions = numPosition.group(function(d) { return Math.min(d, max); }).reduceSum(function(d) { return d.count; });
     
@@ -455,6 +479,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .elasticY(true);
 
     numPositionsChart.xAxis().ticks(5);
+    numPositionsChart.jsonDimension = positionsDimension;
       
     numPositionsChart.render();
     
@@ -466,6 +491,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
   }
   
   
+  var yearDimension = {key: "year", column: 37};
   $scope.showYear = false;
   $scope.removeYear = function() {
     yearChart.svg().remove();
@@ -475,13 +501,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     year.dispose();
     years.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "year", column: 37}).then(load);
+    dataService.removeDimension(yearDimension).then(load);
   }
   $scope.setupYear = function () {
     $scope.showYear = true;
     $scope.topRowCount += 1;
     
-    var promise = dataService.addDimension({key: "year", column: 37});
+    var promise = dataService.addDimension(yearDimension);
     year = visas.dimension(function(d) { return d.year ? "20" + d.year : ""; });
     years = year.group();
     ordinalReducer(years);
@@ -498,6 +524,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .elasticX(true);
       
     yearChart.xAxis().ticks(5);
+    yearChart.jsonDimension = yearDimension;
       
     yearChart.render();
     
@@ -508,6 +535,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.setupYear().then(load);
   }
   
+  var classDimension = {key: "visa_class", column: 5};
   $scope.showClass = false;
   $scope.removeClass = function() {
     visaClassChart.svg().remove();
@@ -517,13 +545,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     visaClass.dispose();
     visaClasses.dispose();
     $scope.steps++;
-    dataService.removeDimension({key: "visa_class", column: 5}).then(load);
+    dataService.removeDimension(classDimension).then(load);
   }
   $scope.setupClass = function () {
     $scope.showClass = true;
     $scope.topRowCount += 1;
     
-    var promise = dataService.addDimension({key: "visa_class", column: 5});
+    var promise = dataService.addDimension(classDimension);
     visaClass = visas.dimension(function(d) { return d.visa_class ? d.visa_class : ""; });
     visaClasses = visaClass.group();
     ordinalReducer(visaClasses);
@@ -540,6 +568,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .elasticX(true);
       
     visaClassChart.xAxis().ticks(5);
+    visaClassChart.jsonDimension = classDimension;
       
     visaClassChart.render();
     
@@ -548,6 +577,74 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
   $scope.initClass = function() {
     $scope.steps++;
     $scope.setupClass().then(load);
+  }
+  
+  $scope.detailHeader = [
+    "LCA_CASE_NUMBER",
+    "STATUS",
+    "LCA_CASE_SUBMIT",
+    "DECISION_DATE",
+    "VISA_CLASS",
+    "LCA_CASE_EMPLOYMENT_START_DATE",
+    "LCA_CASE_EMPLOYMENT_END_DATE",
+    "LCA_CASE_EMPLOYER_NAME",
+    "LCA_CASE_EMPLOYER_ADDRESS",
+    "LCA_CASE_EMPLOYER_CITY",
+    "LCA_CASE_EMPLOYER_STATE",
+    "LCA_CASE_EMPLOYER_POSTAL_CODE",
+    "LCA_CASE_SOC_CODE",
+    "LCA_CASE_SOC_NAME",
+    "LCA_CASE_JOB_TITLE",
+    "LCA_CASE_WAGE_RATE_FROM",
+    "LCA_CASE_WAGE_RATE_TO",
+    "LCA_CASE_WAGE_RATE_UNIT",
+    "FULL_TIME_POS",
+    "TOTAL_WORKERS",
+    "LCA_CASE_WORKLOC1_CITY",
+    "LCA_CASE_WORKLOC1_STATE",
+    "PW_1",
+    "PW_UNIT_1",
+    "PW_SOURCE_1",
+    "OTHER_WAGE_SOURCE_1",
+    "YR_SOURCE_PUB_1",
+    "LCA_CASE_WORKLOC2_CITY",
+    "LCA_CASE_WORKLOC2_STATE",
+    "PW_2",
+    "PW_UNIT_2",
+    "PW_SOURCE_2",
+    "OTHER_WAGE_SOURCE_2",
+    "YR_SOURCE_PUB_2",
+    "LCA_CASE_NAICS_CODE",
+    "Calculated Wage",
+    "Year (2-digit)"
+  ];
+  $scope.detailRecords = [];
+  $scope.viewDetail = function() {
+    $scope.detailRecords = [];
+    var filters = dc.chartRegistry.list().map(function(c, i) {
+      if(c.filters().length === 0) {
+        return undefined;
+      } else {
+        console.log(c.filters());
+        var filter = {
+          dimension: c.jsonDimension
+        };
+        if(typeof c.filters()[0] === 'string') {
+          // Assume this is an ordinal dimension filter.
+          filter.ordinalFilter = c.filters();
+        } else {
+          // Assume this is a range filter.
+          filter.rangeFilter = c.filters()[0];
+        }
+        return filter;
+      }
+    }).filter(function(d) { return d; });
+    dataService.getDetail({ filters: filters }).then(function(details) {
+      console.log(details);
+      $scope.detailRecords = details;
+    }, function(err) {
+      $scope.detailRecords = [];
+    });
   }
   
   // Setup default dimensions

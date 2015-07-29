@@ -46,6 +46,38 @@ class DataService {
       // println(ActiveDimension.dimensions.is.length)
       Empty
     })
+    .jsonCall("getDetail", (filters: Filters) => {
+      LocalSparkContext.sc.setLocalProperty("spark.scheduler.pool", "interactive")
+      Full(LocalSparkContext.splitFiles.filter( line => {
+        val filterResults = for(filter <- filters.filters; round = filter.dimension.round.getOrElse(0)) yield {
+          val ret = if(filter.ordinalFilter.length > 0) {
+            filter.ordinalFilter.contains(line.drop(filter.dimension.column - 1).head)
+          } else {
+            if(filter.rangeFilter.length == 2) {
+              if(round > 0 && line.drop(filter.dimension.column - 1).head != "" ) {
+                // Rounding so assume numeric
+        				val num = ((line.drop(filter.dimension.column - 1).head.toFloat / round).floor * round).toInt
+                // Range only goes to 10000 (special case - should be parameterized)
+                val bot = if(filter.rangeFilter(0).toFloat < 10001) { 0.0 } else { filter.rangeFilter(0).toFloat }
+                // Range only goes to 500000 (special case - should be parameterized)
+                val top = if(filter.rangeFilter(1).toFloat > 500000) { 999999999999999999.0 } else { filter.rangeFilter(1).toFloat }
+                val intRet = ( bot <= num && num <= top )
+                intRet
+        			} else {
+                // No rounding, so assume text (shouldn't happen)
+        				val strRet = ( filter.rangeFilter(0) <= line.drop(filter.dimension.column - 1).head && line.drop(filter.dimension.column - 1).head  <= filter.rangeFilter(1) )
+                strRet
+        			}
+            } else {
+              true
+            }
+          }
+          ret
+        }
+        
+        filterResults.indexOf(false) == -1
+      }).take(15));
+    })
     .jsonCall("load", {
     
       LocalSparkContext.sc.setLocalProperty("spark.scheduler.pool", "interactive")

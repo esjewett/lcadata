@@ -26,3 +26,5 @@ object ActiveDimension {
 
 case class Dimension(key: String, column: Int, round: Option[Int]) extends NgModel
 case class Dimensions(dimensions: List[Dimension]) extends NgModel
+case class Filter(dimension: Dimension, ordinalFilter: List[String], rangeFilter: List[String]) extends NgModel
+case class Filters(filters: List[Filter]) extends NgModel

@@ -47,6 +47,22 @@ class Boot {
 
     // Force the request to be UTF-8
     LiftRules.early.append(_.setCharacterEncoding("UTF-8"))
+    
+    // This is wide open - needs to be restricted.
+    LiftRules.securityRules = () => {
+      SecurityRules(content = Some(ContentSecurityPolicy(
+        defaultSources = List(
+          ContentSourceRestriction.UnsafeInline,
+          ContentSourceRestriction.Self
+        ),
+        scriptSources = List(
+          ContentSourceRestriction.UnsafeInline,
+          ContentSourceRestriction.UnsafeEval,
+          ContentSourceRestriction.Host("www.google-analytics.com"),
+          ContentSourceRestriction.Self
+        )
+      )))
+    }
 
     // Use HTML5 for rendering
     LiftRules.htmlProperties.default.set((r: Req) =>

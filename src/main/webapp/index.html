@@ -6,12 +6,42 @@
       <div ng-app="DataApp">
         <p>
           <div ng-controller="Data">
+            <!-- Modal -->
+            <div class="modal fade" id="dataModal" tabindex="-1" role="dialog" aria-labelledby="dataModalLabel">
+              <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                  <div class="modal-header" style="text-align:center">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Detail data (15 records)</h4>
+                  </div>
+                  <div class="modal-body" style="overflow:scroll;">
+                    <table ng-show="detailRecords.length > 0" class="table table-striped table-condensed">
+                      <thead>
+                        <tr>
+                          <td ng-repeat="cell in detailHeader track by $index">{{cell}}</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr ng-repeat="record in detailRecords">
+                          <td ng-repeat="cell in record track by $index" style="white-space: nowrap">
+                            {{cell}}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div data-lift="comet?type=DataActor"></div>
   	        <div class="container">
               <div id="charts">
                 <h1 class="col-md-12" style="text-align:center;">Labor Condition Applications 2010-2014</h1>
                 <div class="row">
-                  <aside id="totals" class="col-md-4 col-md-offset-8" ng-show="!processing"></aside>
+                  <aside class="col-md-4 col-md-offset-8" ng-show="!processing">
+                    <span id="totals"></span>
+                    <i class="glyphicon glyphicon-search" aria-hidden="true" aria-label="View Detail" title="View Detail" data-toggle="modal" data-target="#dataModal" ng-click="viewDetail()"></i>
+                  </aside>
                   <aside class="col-md-4 col-md-offset-8" ng-show="processing">Loading data for {{steps}} navigation step(s)...</aside>
                 </div>
                 <div class="row">

@@ -625,7 +625,6 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       if(c.filters().length === 0) {
         return undefined;
       } else {
-        console.log(c.filters());
         var filter = {
           dimension: c.jsonDimension
         };
@@ -640,7 +639,6 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       }
     }).filter(function(d) { return d; });
     dataService.getDetail({ filters: filters }).then(function(details) {
-      console.log(details);
       $scope.detailRecords = details;
     }, function(err) {
       $scope.detailRecords = [];

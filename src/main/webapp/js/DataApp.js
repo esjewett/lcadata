@@ -508,7 +508,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     $scope.topRowCount += 1;
     
     var promise = dataService.addDimension(yearDimension);
-    year = visas.dimension(function(d) { return d.year ? "20" + d.year : ""; });
+    year = visas.dimension(function(d) { return d.year ? "" + d.year : ""; });
     years = year.group();
     ordinalReducer(years);
     
@@ -520,6 +520,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .dimension(year)
       .data(function(group) { return group.all().filter(function(d) { return d.key !== ""; }); })
       .valueAccessor(function(d) { return d.value.aggCount ? d.value.aggCount.sum : 0; })
+      .label(function(d) { return "20" + d.key; })
       .ordinalColors(['#3182bd'])
       .elasticX(true);
       
@@ -580,43 +581,43 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
   }
   
   $scope.detailHeader = [
-    "LCA_CASE_NUMBER",
-    "STATUS",
-    "LCA_CASE_SUBMIT",
-    "DECISION_DATE",
-    "VISA_CLASS",
-    "LCA_CASE_EMPLOYMENT_START_DATE",
-    "LCA_CASE_EMPLOYMENT_END_DATE",
-    "LCA_CASE_EMPLOYER_NAME",
-    "LCA_CASE_EMPLOYER_ADDRESS",
-    "LCA_CASE_EMPLOYER_CITY",
-    "LCA_CASE_EMPLOYER_STATE",
-    "LCA_CASE_EMPLOYER_POSTAL_CODE",
-    "LCA_CASE_SOC_CODE",
-    "LCA_CASE_SOC_NAME",
-    "LCA_CASE_JOB_TITLE",
-    "LCA_CASE_WAGE_RATE_FROM",
-    "LCA_CASE_WAGE_RATE_TO",
-    "LCA_CASE_WAGE_RATE_UNIT",
-    "FULL_TIME_POS",
-    "TOTAL_WORKERS",
-    "LCA_CASE_WORKLOC1_CITY",
-    "LCA_CASE_WORKLOC1_STATE",
-    "PW_1",
-    "PW_UNIT_1",
-    "PW_SOURCE_1",
-    "OTHER_WAGE_SOURCE_1",
-    "YR_SOURCE_PUB_1",
-    "LCA_CASE_WORKLOC2_CITY",
-    "LCA_CASE_WORKLOC2_STATE",
-    "PW_2",
-    "PW_UNIT_2",
-    "PW_SOURCE_2",
-    "OTHER_WAGE_SOURCE_2",
-    "YR_SOURCE_PUB_2",
-    "LCA_CASE_NAICS_CODE",
+    "Case Number",
+    "Status",
+    "Submit Date",
+    "Decision Date",
+    "Visa Class",
+    "Employment Start Date",
+    "Employment End Date",
+    "Employer Name",
+    "Employer Address",
+    "Employer City",
+    "Employer State",
+    "Employer Postal Code",
+    "SOC Code",
+    "SOC Name",
+    "Job Title",
+    "Proposed Wage Rate",
+    "Proposed Maximum Wage",
+    "Wage unit",
+    "Full Time (Y/N)",
+    "Number of Workers",
+    "City of Job",
+    "State of Job",
+    "Prevailing Wage Rate",
+    "Prevailing Wage Unit",
+    "Prevailing Wage Source",
+    "Wage Source Desc (cont)",
+    "Year of Publication",
+    "City of Job(2)",
+    "State of Job(2)",
+    "Prevailing Wage Rate(2)",
+    "Prevailing Wage Unit(2)",
+    "Prevailing Wage Source(2)",
+    "Wage Source Desc (cont)(2)",
+    "Year of Publication(2)",
+    "NAICS Industry Code",
     "Calculated Wage",
-    "Year (2-digit)"
+    "Year (YY)"
   ];
   $scope.detailRecords = [];
   $scope.viewDetail = function() {

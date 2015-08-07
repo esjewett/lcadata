@@ -5,6 +5,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 import net.liftweb.http.LiftRules
 
@@ -17,7 +18,7 @@ object LocalSparkContext {
     .setAppName("LCA Filter")
     .setMaster("local[3]")
     .set("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
-    .set("spark.executor.memory", "2g")
+    .set("spark.executor.memory", "4g")
     .set("spark.scheduler.mode", "FAIR")
     .set("spark.shuffle.consolidateFiles", "true")
     
@@ -68,6 +69,9 @@ object LocalSparkContext {
         line.drop(17).head != "" &&
         line.drop(35).head != "0"
       })
+    .map(line => line.toArray)
+      
+  splitFiles.persist(StorageLevel.MEMORY_ONLY_SER)
     
   val data: scala.collection.mutable.Map[Seq[Dimension], RDD[Data]] = scala.collection.mutable.Map()
   val diff: scala.collection.mutable.Map[Diff, RDD[Data]] = scala.collection.mutable.Map()

@@ -664,6 +664,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     
   // Disable transitions for real interactive filtering
   dc.disableTransitions = true;
+  dc.constants.EVENT_DELAY = 0;
     
   dc.renderAll();
   

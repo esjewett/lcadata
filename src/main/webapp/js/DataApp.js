@@ -639,11 +639,16 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
         return filter;
       }
     }).filter(function(d) { return d; });
+    
+    $scope.gettingDetail = true;
     dataService.getDetail({ filters: filters }).then(function(details) {
       $scope.detailRecords = details;
+      $scope.gettingDetail = false;
     }, function(err) {
       $scope.detailRecords = [];
+      $scope.gettingDetail = false;
     });
+    $scope.filterCount = formatNumber(all.value()[0] ? all.value()[0].value.sum : 0);
   }
   
   // Setup default dimensions

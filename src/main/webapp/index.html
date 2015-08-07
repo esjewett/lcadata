@@ -12,7 +12,7 @@
                 <div class="modal-content">
                   <div class="modal-header" style="text-align:center">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title" id="myModalLabel">Detail data (15 records)</h4>
+                    <h4 class="modal-title" id="myModalLabel">Detail data ({{filterCount < 15 ? filterCount : 15}} of {{filterCount}} records)</h4>
                   </div>
                   <div class="modal-body" style="overflow:scroll;">
                     <table ng-show="detailRecords.length > 0" class="table table-striped table-condensed">
@@ -21,13 +21,16 @@
                           <td ng-repeat="cell in detailHeader track by $index">{{cell}}</td>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody ng-show="!gettingDetail">
                         <tr ng-repeat="record in detailRecords">
                           <td ng-repeat="cell in record track by $index" style="white-space: nowrap">
                             {{cell}}
                           </td>
                         </tr>
                       </tbody>
+                      <div ng-show="gettingDetail">
+                        Loading detail...
+                      </div>
                     </table>
                   </div>
                 </div>

@@ -61,11 +61,11 @@ class DataService {
                 val bot = if(filter.rangeFilter(0).toFloat < 10001) { 0.0 } else { filter.rangeFilter(0).toFloat }
                 // Range only goes to 500000 (special case - should be parameterized)
                 val top = if(filter.rangeFilter(1).toFloat > 500000) { 999999999999999999.0 } else { filter.rangeFilter(1).toFloat }
-                val intRet = ( bot <= num && num <= top )
+                val intRet = ( bot <= num && num < top )
                 intRet
         			} else {
                 // No rounding, so assume text (shouldn't happen)
-        				val strRet = ( filter.rangeFilter(0) <= line.drop(filter.dimension.column - 1).head && line.drop(filter.dimension.column - 1).head  <= filter.rangeFilter(1) )
+        				val strRet = ( filter.rangeFilter(0) <= line.drop(filter.dimension.column - 1).head && line.drop(filter.dimension.column - 1).head  < filter.rangeFilter(1) )
                 strRet
         			}
             } else {

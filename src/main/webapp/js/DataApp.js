@@ -1,13 +1,15 @@
 angular.module('DataApp', ['DataServices']).
 
 controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataService) {
-  var ordinalReducer = reductio();
+  
+  var ordinalReducer = reductio_facade();
   ordinalReducer.value("aggCount").sum('count');
   ordinalReducer.value("aggSalary").sum('sum');
-  ordinalReducer.alias({ aggAvg: function(g) { return g.aggSalary.sum/g.aggCount.sum; } });
+  
   
   // Create the crossfilter for the relevant dimensions and groups.
-  var visas = crossfilter(),
+  var visas = crossfilter_facade([], dc.redrawAll),
+  // var visas = crossfilter_facade(),
       all = visas.groupAll(),
       iter = visas.dimension(function(d) { return +d.i; }),
       status, statuses, wageUnit, wageUnits, wage, wages,
@@ -17,11 +19,40 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       occupation, occupations, occupationChart,
       year, years, yearChart,
       visaClass, visaClasses, visaClassChart;
-      
-  reductio()
-    .groupAll(function() { return [""]; })
-    .sum('count')(all);
   
+  reductio_facade()
+    .groupAll(function() { return [""]; })
+    .count(true)
+    .sum('count')(all);
+    
+  var rehydrateFilter = function(f) {
+    if(Array.isArray(f)) {
+      return dc.filters.RangedFilter(f[0],f[1])
+    } else {
+      return f;
+    }
+  }
+  
+  var filterHandler = function (dimension, filters) {
+    if (filters.length === 0) {
+      dimension.filter(null);
+    } else {
+      dimension.filterFunction(function (d) {
+        for (var i = 0; i < filters.length; i++) {
+          var filter = filters[i];
+          if (filter.isFiltered && filter.isFiltered(d)) {
+            return true;
+          } else if (filter <= d && filter >= d) {
+            return true;
+          }
+        }
+        return false;
+      }, 'var filters = ' + JSON.stringify(filters) + '.map(' + rehydrateFilter.toString() + ');');
+    }
+    return filters;
+  };
+  
+  var maxIter = 0;
   $scope.$on('endAdd', function(e) {
     if(firstRun) {
       firstRun = false;
@@ -29,16 +60,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       dc.redrawAll();
     }
     
-    // Figure the max iteration in the data set
-    var maxIter = iter.top(1)[0].i;
-    
     // For now we need to remove all filters, then remove data. This is because of a bug
     // in crossfilter.remove() where it doesn't work correctly if filters are applied.
     var filters = dc.chartRegistry.list().map(function(c) { return c.filters(); });
     dc.filterAll();
     
     // Remove unnecessary data
-    visas.remove(function(d) { return d.i === maxIter; });
+    visas.remove('function(d) { return d.i ===' + maxIter + '; }');
     
     // Add filters back
     dc.chartRegistry.list().forEach(function(c, i) {
@@ -82,7 +110,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
   $scope.processing = false;
   
   var firstRun = true;
-  
+
   $scope.$on('addData', function(e, obj) {
         
     var newObj = [];
@@ -114,6 +142,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       d.avg = +d.avg;
       d.sum = +d.sum;
       d.i = +d.i;
+      if(d.i > maxIter) maxIter = d.i;
     });
     
     visas.add(newObj);
@@ -166,6 +195,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
         .on('preRedraw', function(chart){ chart.calculateColorDomain(); });
       stateChart.render();
       stateChart.jsonDimension = stateDimension;
+      stateChart.filterHandler(filterHandler);
     });
     
     return promise;
@@ -203,7 +233,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .group(jobTitles)
       .colorAccessor(function(d) { return "lightblue"; })
       .keyAccessor(function(d) { return d.value.aggCount.sum; })
-      .valueAccessor(function(d) { return d.value.aggAvg(); })
+      .valueAccessor(function(d) { return d.value.aggSalary.sum/d.value.aggCount.sum; })
       .radiusValueAccessor(function(d) { return 100; })
       .minRadiusWithLabel(0)
       .x(d3.scale.log().domain([0, jobTitles.top(1)[0] ? jobTitles.top(1)[0] : 1 ]))
@@ -219,11 +249,12 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .renderLabel(true)
       .data(function(group) { return group.top(31).filter(function(d) { return d.key !== ""; }); })
       .label(function(d) { return d.key; })
-      .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggAvg()) + " average salary)";});
+      .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggSalary.sum/d.value.aggCount.sum) + " average salary)";});
       
     jobChart.xAxis().tickFormat(d3.format("s"));
     jobChart.yAxis().tickFormat(d3.format("s"));
     jobChart.jsonDimension = jobDimension;
+    jobChart.filterHandler(filterHandler);
       
     jobChart.render();
     
@@ -262,7 +293,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .group(occupations)
       .colorAccessor(function(d) { return "lightblue"; })
       .keyAccessor(function(d) { return d.value.aggCount.sum; })
-      .valueAccessor(function(d) { return d.value.aggAvg(); })
+      .valueAccessor(function(d) { return d.value.aggSalary.sum/d.value.aggCount.sum; })
       .radiusValueAccessor(function(d) { return 100; })
       .minRadiusWithLabel(0)
       .x(d3.scale.log().domain([0, occupations.top(1)[0] ? occupations.top(1)[0] : 1 ]))
@@ -278,11 +309,12 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .renderLabel(true)
       .data(function(group) { return group.top(31).filter(function(d) { return d.key !== ""; }); })
       .label(function(d) { return d.key; })
-      .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggAvg()) + " average salary)";});
+      .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggSalary.sum/d.value.aggCount.sum) + " average salary)";});
       
     occupationChart.xAxis().tickFormat(d3.format("s"));
     occupationChart.yAxis().tickFormat(d3.format("s"));
     occupationChart.jsonDimension = occupationDimension;
+    occupationChart.filterHandler(filterHandler);
       
     occupationChart.render();
     
@@ -326,6 +358,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .dimension(status)
       .ordinalColors(['#3182bd'])
       .elasticX(true);
+      
+    statusChart.filterHandler(filterHandler);
       
     statusChart.xAxis().ticks(5).tickFormat(d3.format("s"));;
     
@@ -386,7 +420,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
         bars.filter(function(d) { return d.data.key === median; }).attr('fill', 'darkred');
       })
       .elasticY(true);
-      
+    
+    wageHistogram.filterHandler(filterHandler);
     wageHistogram.xAxis().ticks(5).tickFormat(d3.format("$s"));
     wageHistogram.yAxis().tickFormat(d3.format("s"));
     wageHistogram.jsonDimension = wageDimension;
@@ -434,6 +469,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       
     wageUnitChart.xAxis().ticks(5).tickFormat(d3.format("s"));
     wageUnitChart.jsonDimension = unitDimension;
+    wageUnitChart.filterHandler(filterHandler);
       
     wageUnitChart.render();
     
@@ -480,6 +516,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
 
     numPositionsChart.xAxis().ticks(5);
     numPositionsChart.jsonDimension = positionsDimension;
+    numPositionsChart.filterHandler(filterHandler);
       
     numPositionsChart.render();
     
@@ -526,6 +563,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       
     yearChart.xAxis().ticks(5);
     yearChart.jsonDimension = yearDimension;
+    yearChart.filterHandler(filterHandler);
       
     yearChart.render();
     
@@ -570,6 +608,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       
     visaClassChart.xAxis().ticks(5);
     visaClassChart.jsonDimension = classDimension;
+    visaClassChart.filterHandler(filterHandler);
       
     visaClassChart.render();
     
@@ -666,6 +705,14 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     .html({
       some: '%filter-count out of %total-count applications displayed',
       all: 'All %total-count applications displayed'
+    });
+    
+  clientRecords = dc.dataCount("#client-records")
+    .dimension({ size: function() { return visas.size(); } })
+    .group({ value: function() { return all.value()[0] ? all.value()[0].value.count : 0; }})
+    .html({
+      some: ' (%filter-count of %total-count client-side records)',
+      all: ''
     });
     
   // Disable transitions for real interactive filtering

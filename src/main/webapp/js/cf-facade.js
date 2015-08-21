@@ -38,6 +38,9 @@ function crossfilter_facade(data, redraw) {
 		dim.group = function(accessor) {
 			var grp = {};
 			
+			// Throttles redraw in ms
+			var redrawThrottle = 50;
+			
 			grp.id = "g" + Math.round(Math.random() * 100000);
 			
 			if(accessor) {
@@ -64,23 +67,42 @@ function crossfilter_facade(data, redraw) {
 				});
 			}
 			
-			// Return the cached value immediately and then
-			// trigger a redraw when we get a new value.
-			// Susceptible to race conditions. We need a full
-			// dispatcher with random method call ids.
+			
+			
 			var cached_grp_all = []
 			var cached_grp_all_id = Math.round(Math.random() * 1000000);
-			cfWorker.listeners[cached_grp_all_id] = function(e) {
-				if(JSON.stringify(cached_grp_all) !== JSON.stringify(e.data)) {
-					cached_grp_all = e.data;
+			var open_grp_all_requests = 0;
+			var last_grp_all_timestamp = 0;
+			var open_grp_all_redraw = false;
+			var redraw_grp_all_callback = function(timestamp) {
+				if(timestamp - last_grp_all_timestamp < redrawThrottle) {
+					window.requestAnimationFrame(redraw_grp_all_callback);
+				} else {
+					// No longer an open redraw because we're about to redraw.
+					open_grp_all_redraw = false;
 					redraw();
 				}
+			}
+			cfWorker.listeners[cached_grp_all_id] = function(e) {
+				open_grp_all_requests--;
+				if(!e.data.unit && JSON.stringify(cached_grp_all) !== JSON.stringify(e.data)) {
+					cached_grp_all = e.data;
+					if(!open_grp_all_redraw) {
+						open_grp_all_redraw = true;
+						window.requestAnimationFrame(redraw_grp_all_callback);	
+					}
+				}
 			};
-			grp.all = function() {		
+			grp.all = function() {
+				var unit = open_grp_all_requests > 1 ? true : false;
+				
+				open_grp_all_requests++;
+				
 				cfWorker.postMessage({
 					type: 'var_method_return',
 					id: grp.id,
 					return_id: cached_grp_all_id,
+					return_unit: unit,
 					method: 'all'
 				});
 				
@@ -89,22 +111,43 @@ function crossfilter_facade(data, redraw) {
 			
 			var cached_grp_top = []
 			var cached_grp_top_id = Math.round(Math.random() * 1000000);
-			cfWorker.listeners[cached_grp_top_id] = function(e) {
-				if(JSON.stringify(cached_grp_top) !== JSON.stringify(e.data)) {
-					cached_grp_top = e.data;
+			var open_grp_top_requests = 0;
+			var last_grp_top_timestamp = 0;
+			var open_grp_top_redraw = false;
+			var redraw_grp_top_callback = function(timestamp) {
+				if(timestamp - last_grp_top_timestamp < redrawThrottle) {
+					window.requestAnimationFrame(redraw_grp_top_callback);
+				} else {
+					// No longer an open redraw because we're about to redraw.
+					open_grp_top_redraw = false;
 					redraw();
+				}
+			}
+			cfWorker.listeners[cached_grp_top_id] = function(e) {
+				open_grp_top_requests--;
+				if(!e.data.unit && JSON.stringify(cached_grp_top) !== JSON.stringify(e.data)) {
+					cached_grp_top = e.data;
+					if(!open_grp_top_redraw) {
+						open_grp_top_redraw = true;
+						window.requestAnimationFrame(redraw_grp_top_callback);	
+					}
 				}
 			};
 			grp.top = function(num) {
+				var unit = open_grp_top_requests > 1 ? true : false;
+				
+				open_grp_top_requests++;
+				
 				cfWorker.postMessage({
 					type: 'var_method_return',
 					id: grp.id,
 					return_id: cached_grp_top_id,
+					return_unit: unit,
 					method: 'top',
-					arg: Infinity
+					arg: num
 				});
 				
-				return cached_grp_top.slice(0,num);
+				return cached_grp_top;
 			}
 			
 			grp.reduceSum = function(accessor) {
@@ -184,7 +227,6 @@ function crossfilter_facade(data, redraw) {
 				]
 			});
 			
-			console.log("dim.filter");
 			redraw();
 			return dim;
 		}
@@ -201,7 +243,6 @@ function crossfilter_facade(data, redraw) {
 				]
 			});
 			
-			console.log("dim.dispose");
 			redraw();
 		}
 		
@@ -216,13 +257,44 @@ function crossfilter_facade(data, redraw) {
 				}
 			);
 			
-			console.log("dim.filterFunction");
 			redraw();
 			return dim;
 		}
 		
 		dim.filterExact = function(filt) {
-			console.log("dim.filterExact");
+			cfWorker.postMessage(
+				{
+					type: 'var_methods',
+					id: dim.id,
+					methods: [
+						{
+							method: 'filterExact',
+							args: [filt]
+						}
+					]
+				}
+			);
+			
+			redraw();
+			return dim;
+		}
+		
+		dim.filterRange = function(filt) {
+			cfWorker.postMessage(
+				{
+					type: 'var_methods',
+					id: dim.id,
+					methods: [
+						{
+							method: 'filterRange',
+							args: [filt]
+						}
+					]
+				}
+			);
+			
+			redraw();
+			return dim;
 		}
 		
 		return dim;

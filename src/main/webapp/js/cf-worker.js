@@ -62,7 +62,14 @@ function call_var_on_var(e) {
 function var_method_return(e) {
   var dat = vars[e.data.id][e.data.method].call(null, e.data.arg);
   dat.return_id = e.data.return_id;
-  postMessage(dat);
+  if(e.data.return_unit) {
+    postMessage({
+      return_id: e.data.return_id,
+      unit: true
+    })
+  } else {
+    postMessage(dat);
+  }
 }
 
 function var_unstructured_method_return(e) {

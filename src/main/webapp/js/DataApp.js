@@ -36,6 +36,13 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
   var filterHandler = function (dimension, filters) {
     if (filters.length === 0) {
       dimension.filter(null);
+    } else if (filters.length === 1 && !Array.isArray(filters[0])) {
+      dimension.filterExact(filters[0]);
+    } else if(filters.length === 1 && Array.isArray(filters[0])
+      && filters[0].isFiltered
+      && typeof filters[0][0] === typeof filters[0][1]) {
+
+      dimension.filterRange([filters[0][0], filters[0][1]]);
     } else {
       dimension.filterFunction(function (d) {
         for (var i = 0; i < filters.length; i++) {
@@ -711,8 +718,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     .dimension({ size: function() { return visas.size(); } })
     .group({ value: function() { return all.value()[0] ? all.value()[0].value.count : 0; }})
     .html({
-      some: ' (%filter-count of %total-count client-side records)',
-      all: ''
+      some: ' (%total-count total client-side records)',
+      all: ' (%total-count total client-side records)'
     });
     
   // Disable transitions for real interactive filtering

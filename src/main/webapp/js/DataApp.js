@@ -83,7 +83,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       } else {
         if(filters[i][0]) {
           // Assume ranged filter.
-          c.filter(filters[i][0]); 
+          c.filter(filters[i][0]);
         }
       }
     });
@@ -152,7 +152,7 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       if(d.i > maxIter) maxIter = d.i;
     });
     
-    visas.add(newObj);
+    visas.add(newObj).then(dc.redrawAll);
     
     if(stateChart) stateChart.calculateColorDomain();
     if(jobChart) jobChart.calculateColorDomain();
@@ -254,8 +254,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .xAxisLabel("Number of applications")
       .yAxisLabel("Average Salary")
       .renderLabel(true)
-      .data(function(group) { return group.top(30); })
-      .label(function(d) { return d.key ? d.key : "No job defined"; })
+      .data(function(group) { return group.top(30).filter(function(d) { return d.key !== ""; }); })
+      .label(function(d) { return d.key ? d.key : "None listed"; })
       .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggSalary.sum/d.value.aggCount.sum) + " average salary)";});
       
     jobChart.xAxis().tickFormat(d3.format("s"));
@@ -500,15 +500,12 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
     dataService.removeDimension(positionsDimension).then(load);
   }
   $scope.setupNumPositions = function () {
-    var max = 20;
-    var min = 1;
-    
     $scope.showNumPositions = true;
     $scope.topRowCount += 1;
     
     var promise = dataService.addDimension(positionsDimension);
-    numPosition = visas.dimension(function(d) { return d.num_positions ? Math.min(Math.max(+d.num_positions, min),max) : 0; });
-    numPositions = numPosition.group(function(d) { return Math.min(d, max); }).reduceSum(function(d) { return d.count; });
+    numPosition = visas.dimension(function(d) { return d.num_positions ? Math.min(Math.max(+d.num_positions, 1),20) : 0; });
+    numPositions = numPosition.group(function(d) { return Math.min(d, 20); }).reduceSum(function(d) { return d.count; });
     
     numPositionsChart = dc.barChart('#num-positions-chart')
       .height(180)
@@ -518,10 +515,11 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .dimension(numPosition)
       .round(dc.round.floor)
       .alwaysUseRounding(true)
-      .x(d3.scale.linear().domain([min, max ]))
+      .x(d3.scale.linear().domain([1, 20 ]))
       .elasticY(true);
 
     numPositionsChart.xAxis().ticks(5);
+    numPositionsChart.yAxis().tickFormat(d3.format("s"));
     numPositionsChart.jsonDimension = positionsDimension;
     numPositionsChart.filterHandler(filterHandler);
       

@@ -116,11 +116,13 @@ function crossfilter_facade(data, redraw) {
 				if(!e.data.unit && JSON.stringify(cached_grp_all) !== JSON.stringify(e.data)) {
 					cached_grp_all = e.data;
 					request_redraw();
+				} else if (open_grp_alls === 0 && e.data.unit) {
+					// Last return is a unit. Call again to force non-unit update, redraw.
+					grp.all();
 				}
 			}
 			grp.all = function() {
 				var unit = open_grp_alls ? true : false;
-				
 				open_grp_alls++;
 				
 				cfWorker.post_message({
@@ -141,6 +143,9 @@ function crossfilter_facade(data, redraw) {
 				if(!e.data.unit && JSON.stringify(cached_grp_top) !== JSON.stringify(e.data)) {
 					cached_grp_top = e.data;
 					request_redraw();
+				} else if (open_grp_tops === 0 && e.data.unit) {
+					// Last return is a unit. Call again to force non-unit update, redraw.
+					grp.top(e.data.arg);
 				}
 			}
 			grp.top = function(num) {
@@ -205,7 +210,7 @@ function crossfilter_facade(data, redraw) {
 		
 		var cached_top_value = [];
 		var top_value_update_cache_and_redraw = function(e) {
-			if(cached_top_value.length !== e.data.length) {
+			if(JSON.stringify(cached_top_value) !== JSON.stringify(e.data)) {
 				cached_top_value = e.data;
 				request_redraw();	
 			}
@@ -231,7 +236,7 @@ function crossfilter_facade(data, redraw) {
 						args: [filt]
 					}
 				]
-			}).then(request_redraw);
+			});
 			
 			return dim;
 		}
@@ -258,7 +263,7 @@ function crossfilter_facade(data, redraw) {
 					context: eval_context,
 					func: filterFunc.toString()
 				}
-			).then(request_redraw);
+			);
 			
 			return dim;
 		}
@@ -275,7 +280,7 @@ function crossfilter_facade(data, redraw) {
 						}
 					]
 				}
-			).then(request_redraw);
+			);
 			
 			return dim;
 		}
@@ -292,7 +297,7 @@ function crossfilter_facade(data, redraw) {
 						}
 					]
 				}
-			).then(request_redraw);
+			);
 			
 			return dim;
 		}
@@ -338,7 +343,7 @@ function crossfilter_facade(data, redraw) {
 	}
 	
 	cf.add = function(arr) {
-		cfWorker.post_message({
+		return cfWorker.post_message({
 			type: 'var_methods',
 			id: cf.id,
 			methods: [
@@ -369,7 +374,7 @@ function crossfilter_facade(data, redraw) {
 	
 	cf.remove = function(accessor) {
 		if(accessor) {
-			cfWorker.post_message(
+			return cfWorker.post_message(
 				{
 					type: 'var_method_function',
 					id: cf.id,
@@ -378,7 +383,7 @@ function crossfilter_facade(data, redraw) {
 				}
 			);	
 		} else {
-			cfWorker.post_message({
+			return cfWorker.post_message({
 				type: 'var_methods',
 				id: cf.id,
 				methods: [

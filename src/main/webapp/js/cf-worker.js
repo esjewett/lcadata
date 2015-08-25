@@ -67,11 +67,13 @@ function call_var_on_var(e) {
 function var_method_return(e) {
   var dat = vars[e.data.id][e.data.method].call(null, e.data.arg);
   dat.uid = e.data.uid;
+  dat.arg = e.data.arg;
   if(e.data.return_unit) {
     postMessage({
       uid: e.data.uid,
-      unit: true
-    })
+      unit: true,
+      arg: e.data.arg
+    });
   } else {
     postMessage(dat);
   }

@@ -254,8 +254,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .xAxisLabel("Number of applications")
       .yAxisLabel("Average Salary")
       .renderLabel(true)
-      .data(function(group) { return group.top(31).filter(function(d) { return d.key !== ""; }); })
-      .label(function(d) { return d.key; })
+      .data(function(group) { return group.top(30); })
+      .label(function(d) { return d.key ? d.key : "No job defined"; })
       .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggSalary.sum/d.value.aggCount.sum) + " average salary)";});
       
     jobChart.xAxis().tickFormat(d3.format("s"));
@@ -314,8 +314,8 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
       .xAxisLabel("Number of applications")
       .yAxisLabel("Average Salary")
       .renderLabel(true)
-      .data(function(group) { return group.top(31).filter(function(d) { return d.key !== ""; }); })
-      .label(function(d) { return d.key; })
+      .data(function(group) { return group.top(30); })
+      .label(function(d) { return d.key ? d.key : "None listed"; })
       .title(function(d) { return d.key + " (" + d.value.aggCount.sum + " applications, $" + Math.round(d.value.aggSalary.sum/d.value.aggCount.sum) + " average salary)";});
       
     occupationChart.xAxis().tickFormat(d3.format("s"));

@@ -1,23 +1,67 @@
 var cfWorker = new Worker('js/cf-worker.js');
+cfWorker.uListeners = {};
+cfWorker.onmessage = function(e) {
+	if(e.data.return_id && e.data.return_id[0]) { cfWorker.listeners[e.data.return_id[0]](e); };
+	if(e.data.uid) {
+		cfWorker.uListeners[e.data.uid](e);
+		delete cfWorker.uListeners[e.data.uid];
+	};
+}
+
+cfWorker.post_message = function(message) {
+	var uid = Math.round(Math.random() * 100000000);
+	var prom;
+	if(message) { 
+		message.uid = uid;
+		prom = new Promise(function(resolve, reject) {
+			cfWorker.uListeners[uid] = resolve;
+		}); 
+		cfWorker.postMessage(message);
+	} else {
+		// No message
+		prom = new Promise(function(resolve, reject) {
+			reject('No message');
+		});
+	}
+	return prom;
+}
 
 function crossfilter_facade(data, redraw) {
 	var cf = {};
 	
 	if(!redraw) redraw = function() { };
 	
+	// Throttles redraw in ms
+	var redrawThrottle = 25;
+	var last_redraw_timestamp = performance.now();
+	var open_redraw_request = false;
+	var request_redraw = function() {
+		// Only request a new redraw if there isn't currently one in queue.
+		if(!open_redraw_request && performance.now() - last_redraw_timestamp > redrawThrottle) {
+			last_redraw_timestamp = performance.now();
+			redraw();
+		} else if(!open_redraw_request) {
+			open_redraw_request = true;
+			window.requestAnimationFrame(request_redraw_internal);
+		}
+	}
+	var request_redraw_internal = function() {
+		// Execute redraw if throttle has been exceeded.
+		if(performance.now() - last_redraw_timestamp > redrawThrottle) {
+			open_redraw_request = false;
+			last_redraw_timestamp = performance.now();
+			redraw();
+		} else {
+			window.requestAnimationFrame(request_redraw_internal);
+		}
+	}
+	
 	cf.id = "c" + Math.round(Math.random() * 100000);
 	
-	cfWorker.postMessage(
-		{
-			type: 'crossfilter_var',
-			id: cf.id
-		}
-	);
-	
-	cfWorker.listeners = {};
-	cfWorker.onmessage = function(e) {
-		cfWorker.listeners[e.data.return_id](e);
-	}
+	cfWorker.post_message({
+		type: 'crossfilter_var',
+		id: cf.id
+	});
 	
 	cf.dimension = function(accessor) {
     
@@ -25,7 +69,7 @@ function crossfilter_facade(data, redraw) {
 		
 		dim.id = "d" + Math.round(Math.random() * 100000);
 		
-		cfWorker.postMessage(
+		cfWorker.post_message(
 			{
 				type: 'var_method_function',
 				id: cf.id,
@@ -38,13 +82,10 @@ function crossfilter_facade(data, redraw) {
 		dim.group = function(accessor) {
 			var grp = {};
 			
-			// Throttles redraw in ms
-			var redrawThrottle = 50;
-			
 			grp.id = "g" + Math.round(Math.random() * 100000);
 			
 			if(accessor) {
-				cfWorker.postMessage(
+				cfWorker.post_message(
 					{
 						type: 'var_method_function',
 						id: dim.id,
@@ -54,7 +95,7 @@ function crossfilter_facade(data, redraw) {
 					}
 				);	
 			} else {
-				cfWorker.postMessage({
+				cfWorker.post_message({
 					type: 'var_methods',
 					id: dim.id,
 					newId: grp.id,
@@ -67,91 +108,59 @@ function crossfilter_facade(data, redraw) {
 				});
 			}
 			
-			
-			
+				
 			var cached_grp_all = []
-			var cached_grp_all_id = Math.round(Math.random() * 1000000);
-			var open_grp_all_requests = 0;
-			var last_grp_all_timestamp = 0;
-			var open_grp_all_redraw = false;
-			var redraw_grp_all_callback = function(timestamp) {
-				if(timestamp - last_grp_all_timestamp < redrawThrottle) {
-					window.requestAnimationFrame(redraw_grp_all_callback);
-				} else {
-					// No longer an open redraw because we're about to redraw.
-					open_grp_all_redraw = false;
-					redraw();
-				}
-			}
-			cfWorker.listeners[cached_grp_all_id] = function(e) {
-				open_grp_all_requests--;
+			var open_grp_alls = 0;
+			var grp_all_update_cache_and_request_redraw = function(e) {
+				open_grp_alls--;
 				if(!e.data.unit && JSON.stringify(cached_grp_all) !== JSON.stringify(e.data)) {
 					cached_grp_all = e.data;
-					if(!open_grp_all_redraw) {
-						open_grp_all_redraw = true;
-						window.requestAnimationFrame(redraw_grp_all_callback);	
-					}
+					request_redraw();
 				}
-			};
+			}
 			grp.all = function() {
-				var unit = open_grp_all_requests > 1 ? true : false;
+				var unit = open_grp_alls ? true : false;
 				
-				open_grp_all_requests++;
+				open_grp_alls++;
 				
-				cfWorker.postMessage({
+				cfWorker.post_message({
 					type: 'var_method_return',
 					id: grp.id,
-					return_id: cached_grp_all_id,
 					return_unit: unit,
 					method: 'all'
-				});
+				}).then(grp_all_update_cache_and_request_redraw);
 				
 				return cached_grp_all;
 			}
 			
-			var cached_grp_top = []
-			var cached_grp_top_id = Math.round(Math.random() * 1000000);
-			var open_grp_top_requests = 0;
-			var last_grp_top_timestamp = 0;
-			var open_grp_top_redraw = false;
-			var redraw_grp_top_callback = function(timestamp) {
-				if(timestamp - last_grp_top_timestamp < redrawThrottle) {
-					window.requestAnimationFrame(redraw_grp_top_callback);
-				} else {
-					// No longer an open redraw because we're about to redraw.
-					open_grp_top_redraw = false;
-					redraw();
-				}
-			}
-			cfWorker.listeners[cached_grp_top_id] = function(e) {
-				open_grp_top_requests--;
+			
+			var cached_grp_top = [];
+			var open_grp_tops = 0;
+			var grp_top_update_cache_and_request_redraw = function(e) {
+				open_grp_tops--;
 				if(!e.data.unit && JSON.stringify(cached_grp_top) !== JSON.stringify(e.data)) {
 					cached_grp_top = e.data;
-					if(!open_grp_top_redraw) {
-						open_grp_top_redraw = true;
-						window.requestAnimationFrame(redraw_grp_top_callback);	
-					}
+					request_redraw();
 				}
-			};
+			}
 			grp.top = function(num) {
-				var unit = open_grp_top_requests > 1 ? true : false;
+				var unit = open_grp_tops ? true : false;
 				
-				open_grp_top_requests++;
+				open_grp_tops++;
 				
-				cfWorker.postMessage({
+				cfWorker.post_message({
 					type: 'var_method_return',
 					id: grp.id,
-					return_id: cached_grp_top_id,
 					return_unit: unit,
 					method: 'top',
 					arg: num
-				});
+				}).then(grp_top_update_cache_and_request_redraw);
 				
 				return cached_grp_top;
 			}
 			
 			grp.reduceSum = function(accessor) {
-				cfWorker.postMessage(
+				cfWorker.post_message(
 					{
 						type: 'var_method_function',
 						id: grp.id,
@@ -164,7 +173,7 @@ function crossfilter_facade(data, redraw) {
 			}
 			
 			grp.order = function(accessor) {
-				cfWorker.postMessage(
+				cfWorker.post_message(
 					{
 						type: 'var_method_function',
 						id: grp.id,
@@ -177,7 +186,7 @@ function crossfilter_facade(data, redraw) {
 			}
 			
 			grp.dispose = function() {
-				cfWorker.postMessage({
+				cfWorker.post_message({
 					type: 'var_methods',
 					id: grp.id,
 					methods: [
@@ -195,28 +204,25 @@ function crossfilter_facade(data, redraw) {
 		}
 		
 		var cached_top_value = [];
-		var cached_top_value_id = Math.round(Math.random() * 1000000);
+		var top_value_update_cache_and_redraw = function(e) {
+			if(cached_top_value.length !== e.data.length) {
+				cached_top_value = e.data;
+				request_redraw();	
+			}
+		}
 		dim.top = function(num) {
-			cfWorker.listeners[cached_top_value_id] = function(e) {
-				if(cached_top_value.length !== e.data.length) {
-					cached_top_value = e.data;
-					redraw();	
-				}
-			};
-			
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_method_return',
 				id: dim.id,
 				method: 'top',
-				return_id: cached_top_value_id,
 				arg: Infinity
-			});
+			}).then(top_value_update_cache_and_redraw);
 			
 			return cached_top_value.slice(0,num);
 		}
 		
 		dim.filter = function(filt) {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_methods',
 				id: dim.id,
 				methods: [
@@ -225,14 +231,13 @@ function crossfilter_facade(data, redraw) {
 						args: [filt]
 					}
 				]
-			});
+			}).then(request_redraw);
 			
-			redraw();
 			return dim;
 		}
 		
 		dim.dispose = function() {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_methods',
 				id: dim.id,
 				methods: [
@@ -241,13 +246,11 @@ function crossfilter_facade(data, redraw) {
 						args: []
 					}
 				]
-			});
-			
-			redraw();
+			}).then(request_redraw);
 		}
 		
 		dim.filterFunction = function(filterFunc, eval_context) {
-			cfWorker.postMessage(
+			cfWorker.post_message(
 				{
 					type: 'var_method_function',
 					id: dim.id,
@@ -255,14 +258,13 @@ function crossfilter_facade(data, redraw) {
 					context: eval_context,
 					func: filterFunc.toString()
 				}
-			);
+			).then(request_redraw);
 			
-			redraw();
 			return dim;
 		}
 		
 		dim.filterExact = function(filt) {
-			cfWorker.postMessage(
+			cfWorker.post_message(
 				{
 					type: 'var_methods',
 					id: dim.id,
@@ -273,14 +275,13 @@ function crossfilter_facade(data, redraw) {
 						}
 					]
 				}
-			);
+			).then(request_redraw);
 			
-			redraw();
 			return dim;
 		}
 		
 		dim.filterRange = function(filt) {
-			cfWorker.postMessage(
+			cfWorker.post_message(
 				{
 					type: 'var_methods',
 					id: dim.id,
@@ -291,9 +292,8 @@ function crossfilter_facade(data, redraw) {
 						}
 					]
 				}
-			);
+			).then(request_redraw);
 			
-			redraw();
 			return dim;
 		}
 		
@@ -305,7 +305,7 @@ function crossfilter_facade(data, redraw) {
 		
 		ga.id = 'ga' + Math.round(Math.random() * 100000);
 		
-		cfWorker.postMessage({
+		cfWorker.post_message({
 			type: 'var_methods',
 			id: cf.id,
 			newId: ga.id,
@@ -318,20 +318,18 @@ function crossfilter_facade(data, redraw) {
 		});
 		
 		var cached_ga_value = [];
-		var cached_ga_value_id = Math.round(Math.random() * 1000000);
-		cfWorker.listeners[cached_ga_value_id] = function(e) {
+		var ga_value_update_cache_and_request_redraw = function(e) {
 			if(JSON.stringify(cached_ga_value) !== JSON.stringify(e.data)) {
 				cached_ga_value = e.data;
-				redraw();	
+				request_redraw();	
 			}
 		};
 		ga.value = function() {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_method_return',
 				id: ga.id,
-				return_id: cached_ga_value_id,
 				method: 'value'
-			});
+			}).then(ga_value_update_cache_and_request_redraw);
 			
 			return cached_ga_value;
 		}
@@ -340,7 +338,7 @@ function crossfilter_facade(data, redraw) {
 	}
 	
 	cf.add = function(arr) {
-		cfWorker.postMessage({
+		cfWorker.post_message({
 			type: 'var_methods',
 			id: cf.id,
 			methods: [
@@ -353,28 +351,25 @@ function crossfilter_facade(data, redraw) {
 	}
 	
 	var cached_size_value = 0;
-	var cached_size_value_id = Math.round(Math.random() * 1000000);
+	var size_update_cache_and_request_redraw = function(e) {
+		if(cached_size_value !== e.data.data) {
+			cached_size_value = e.data.data;
+			request_redraw();	
+		}
+	};
 	cf.size = function() {
-		cfWorker.listeners[cached_size_value_id] = function(e) {
-			if(cached_size_value !== e.data.data) {
-				cached_size_value = e.data.data;
-				redraw();	
-			}
-		};
-		
-		cfWorker.postMessage({
+		cfWorker.post_message({
 			type: 'var_unstructured_method_return',
 			id: cf.id,
-			return_id: cached_size_value_id,
 			method: 'size'
-		});
+		}).then(size_update_cache_and_request_redraw);
 		
 		return cached_size_value;
 	}
 	
 	cf.remove = function(accessor) {
 		if(accessor) {
-			cfWorker.postMessage(
+			cfWorker.post_message(
 				{
 					type: 'var_method_function',
 					id: cf.id,
@@ -383,7 +378,7 @@ function crossfilter_facade(data, redraw) {
 				}
 			);	
 		} else {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_methods',
 				id: cf.id,
 				methods: [
@@ -401,7 +396,7 @@ function crossfilter_facade(data, redraw) {
 
 function reductio_facade() {
 	var red = function(cf_facade_group) {
-		cfWorker.postMessage({
+		cfWorker.post_message({
 			type: 'call_var_on_var',
 			callFunc: red.id,
 			arg: cf_facade_group.id
@@ -410,13 +405,13 @@ function reductio_facade() {
 	
 	red.id = "r" + Math.round(Math.random() * 100000);
 	
-	cfWorker.postMessage({ type: 'reductio_var', id: red.id });
+	cfWorker.post_message({ type: 'reductio_var', id: red.id });
 	
 	red.value = function(name) {
 		var value = {};
 		value.id = "v" + Math.round(Math.random() * 100000);
 		
-		cfWorker.postMessage({ 
+		cfWorker.post_message({ 
 			type: 'var_methods', 
 			id: red.id,
 			newId: value.id,
@@ -429,7 +424,7 @@ function reductio_facade() {
 		});
 		
 		value.sum = function(accessor) {
-			cfWorker.postMessage({ 
+			cfWorker.post_message({ 
 				type: 'var_methods', 
 				id: value.id,
 				methods: [
@@ -448,7 +443,7 @@ function reductio_facade() {
 	
 	red.groupAll = function(accessor) {
 		var rga = function(cf_facade_group) {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'call_var_on_var',
 				callFunc: rga.id,
 				arg: cf_facade_group.id
@@ -456,7 +451,7 @@ function reductio_facade() {
 		};
 		rga.id = "rga" + Math.round(Math.random() * 100000);
 		
-		cfWorker.postMessage({
+		cfWorker.post_message({
 			type: 'var_method_function',
 			id: red.id,
 			method: 'groupAll',
@@ -465,7 +460,7 @@ function reductio_facade() {
 		});
 		
 		rga.count = function(bool) {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_methods',
 				id: rga.id,
 				methods: [
@@ -480,7 +475,7 @@ function reductio_facade() {
 		};
 		
 		rga.sum = function(accessor) {
-			cfWorker.postMessage({
+			cfWorker.post_message({
 				type: 'var_methods',
 				id: rga.id,
 				methods: [

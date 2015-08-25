@@ -1,4 +1,4 @@
-importScripts('crossfilter.js', 'reductio.js', 'd3.js', 'dc.js');
+importScripts('crossfilter.js', 'reductio.js');
 
 var vars = {};
 
@@ -30,10 +30,12 @@ onmessage = function(e) {
 
 function reductio_var(e) {
   vars[e.data.id] = reductio();
+  if(e.data.uid) { postMessage({ uid: e.data.uid }); }
 }
 
 function crossfilter_var(e) {
   vars[e.data.id] = crossfilter();
+  if(e.data.uid) { postMessage({ uid: e.data.uid }); }
 }
 
 function var_methods(e) {
@@ -44,6 +46,7 @@ function var_methods(e) {
   if(e.data.newId !== undefined) {
     vars[e.data.newId] = temp;
   }
+  if(e.data.uid) { postMessage({ uid: e.data.uid }); }
 }
 
 function var_method_function(e) {
@@ -53,18 +56,20 @@ function var_method_function(e) {
   if(e.data.newId !== undefined) {
     vars[e.data.newId] = temp;
   }
+  if(e.data.uid) { postMessage({ uid: e.data.uid }); }
 }
 
 function call_var_on_var(e) {
   vars[e.data.callFunc].call(null, vars[e.data.arg]);
+  if(e.data.uid) { postMessage({ uid: e.data.uid }); }
 }
 
 function var_method_return(e) {
   var dat = vars[e.data.id][e.data.method].call(null, e.data.arg);
-  dat.return_id = e.data.return_id;
+  dat.uid = e.data.uid;
   if(e.data.return_unit) {
     postMessage({
-      return_id: e.data.return_id,
+      uid: e.data.uid,
       unit: true
     })
   } else {
@@ -76,7 +81,7 @@ function var_unstructured_method_return(e) {
   var dat = vars[e.data.id][e.data.method].call(null, e.data.arg);
   var strct = {};
   strct.data = dat;
-  strct.return_id = e.data.return_id;
+  strct.uid = e.data.uid;
   postMessage(strct);
 }
 

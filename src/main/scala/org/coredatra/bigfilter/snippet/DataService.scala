@@ -18,6 +18,16 @@ import scala.collection.mutable.Map
 import org.coredatra.bigfilter.model.Data
 import org.coredatra.bigfilter.model.Diff
 
+import org.apache.avro.Schema
+import org.apache.avro.Schema.Parser
+import org.apache.avro.generic.{GenericData,GenericDatumWriter,GenericDatumReader}
+import org.apache.avro.file.DataFileWriter
+import org.apache.avro.generic.{GenericRecord,GenericArray,GenericData}
+import org.apache.avro.file.CodecFactory
+import org.apache.avro.io.{DirectBinaryEncoder,EncoderFactory, BinaryEncoder,DecoderFactory}
+
+import java.io.ByteArrayOutputStream
+
 class DataService {
 
   def services = renderIfNotAlreadyDefined(angular.module("DataServices").factory("dataService", jsObjFactory()
@@ -26,7 +36,7 @@ class DataService {
         ActiveDimension.dimensions.set(ActiveDimension.dimensions.is :+ dimension)
       }
       // println(ActiveDimension.dimensions.is.length)
-      Empty
+      Full(payloadSchemaString(ActiveDimension.dimensions.is, ActiveDimension.oldDimensions.is))
     })
     .jsonCall("addDimensions", (dimensions: Dimensions) => {
       for(dim <- dimensions.dimensions) {
@@ -35,7 +45,7 @@ class DataService {
         }
       }
       // println("After: " + ActiveDimension.dimensions.is.length)
-      Empty
+      Full(payloadSchemaString(ActiveDimension.dimensions.is, ActiveDimension.oldDimensions.is))
     })
     .jsonCall("removeDimension", (dimension: Dimension) => {
       if(ActiveDimension.dimensions.is.contains(dimension)) {
@@ -44,7 +54,7 @@ class DataService {
         ))
       }
       // println(ActiveDimension.dimensions.is.length)
-      Empty
+      Full(payloadSchemaString(ActiveDimension.dimensions.is, ActiveDimension.oldDimensions.is))
     })
     .jsonCall("getDetail", (filters: Filters) => {
       LocalSparkContext.sc.setLocalProperty("spark.scheduler.pool", "interactive")
@@ -122,14 +132,16 @@ class DataService {
           
         if(payload.length > 99999) {
           S.session.foreach(
-            (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", compress(payload, newDimensions, oldDimensions, newIteration, oldIteration)))
+            (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", avroSerialize(payload, newDimensions, oldDimensions, newIteration, oldIteration)))
           )
           payload = ArrayBuffer()
         }
       }  
       
       S.session.foreach(
-        (sess) => sess.sendCometActorMessage("DataActor", Empty, ("addData", compress(payload, newDimensions, oldDimensions, newIteration, oldIteration)))
+        (sess) => {
+          sess.sendCometActorMessage("DataActor", Empty, ("addData", avroSerialize(payload, newDimensions, oldDimensions, newIteration, oldIteration)))
+        }
       )
       
       S.session.foreach(
@@ -141,76 +153,106 @@ class DataService {
       Empty
     })
   ))
-  
-  def compress = (payload: ArrayBuffer[Data], currentStructure: Seq[Dimension], previousStructure: Seq[Dimension], ci: String, oi: String) => {
-    val compressedPayload: Map[String, Map[String, ArrayBuffer[String]]] = Map()
-    
-    def intToStr = (int: Int) => {
-      java.lang.Integer.toString(int, 36)
-    }
-    
-    def strToInt = (str: String) => {
-      java.lang.Integer.parseInt(str, 36)
-    }
-    
-    def appendCompressed = (key: String, member: String, rowNum: Int) => {
-      val map = compressedPayload.getOrElse(key, Map())
-      val list = map.getOrElse(member, ArrayBuffer()) += intToStr(rowNum)
-      
-      // Check the list actually has 2 items
-      if(list.length > 1) {
-        // Check if the last 2 elements are adjacent.
-        if(list(list.length - 2).contains(":")) {
-        	// The previous item is a range.
-          if(strToInt(list(list.length-2).split(":")(1)) + strToInt(list(list.length-2).split(":")(0)) == rowNum) {
-            // We should add this to the previous range because the start line plus the length is the previous row.
-            list.update(list.length-2, list(list.length-2).split(":")(0) + ":" + intToStr(strToInt(list(list.length-2).split(":")(1)) + 1))
-            list.remove(list.length-1)
-          }
-        } else {
-          // Previous item is not a range
-          if(strToInt(list(list.length - 2)) == rowNum-1) {
-            // We should start a range.
-            list.update(list.length-2, list(list.length-2) + ":" + intToStr(2))
-            list.remove(list.length-1) 
-          }  
-        }
-      }
-      
-      map.update(member, list)
-      compressedPayload.update(key, map)
-    }
-    
-    for((data, i) <- payload.zipWithIndex) {
-      data.newRec match {
+
+  def rowSchemaJson = (newDimensions: Seq[Dimension], oldDimensions: Seq[Dimension]) => {
+    JObject(
+      List(
+        JField("type", JString("record")),
+        JField("name", JString("TransferRecord")),
+        JField("fields", JArray(
+          (for(dim:Dimension <- newDimensions.union(oldDimensions).toSet) yield {
+            JObject(List(JField("name", JString(dim.key)), JField("type", JString("string")), JField("default", JString(""))))
+          }).toList.union(List(JObject(List(JField("name", JString("i")), JField("type", JString("string"))))))
+            .union(List(
+              JObject(List(JField("name", JString("count")), JField("type", JString("string")))),
+              JObject(List(JField("name", JString("sum")), JField("type", JString("string")))),
+              JObject(List(JField("name", JString("avg")), JField("type", JString("string"))))
+            ))
+        ))
+      )
+    )
+  }
+
+  def rowSchema = (newDimensions: Seq[Dimension], oldDimensions: Seq[Dimension]) => {
+    val rowSchemaObj = rowSchemaJson(newDimensions, oldDimensions)
+
+    val rowSchemaString = Schema.parse(Printer.compact(JsonAST.render(rowSchemaObj)))
+    rowSchemaString
+  }
+
+  def payloadSchemaString = (newDimensions: Seq[Dimension], oldDimensions: Seq[Dimension]) => {
+    Printer.compact(JsonAST.render(JObject(
+      List(
+        JField("type", JString("array")),
+        JField("items", rowSchemaJson(newDimensions, oldDimensions))
+      )
+    )))
+  }
+
+  def payloadSchema = (newDimensions: Seq[Dimension], oldDimensions: Seq[Dimension]) => {
+    val payloadSchema = Schema.parse(payloadSchemaString(newDimensions, oldDimensions))
+
+    payloadSchema
+  }
+
+  def avroSerialize = (payload: ArrayBuffer[Data], newDimensions: Seq[Dimension], oldDimensions: Seq[Dimension], newIteration: String, oldIteration: String) => {
+    val rowSchemaObj = rowSchemaJson(newDimensions, oldDimensions)
+
+    val rowSchemaString = Schema.parse(Printer.compact(JsonAST.render(rowSchemaObj)))
+
+    val payloadSchemaString = payloadSchema(newDimensions, oldDimensions)
+
+    val os = new ByteArrayOutputStream()
+    val factory = new EncoderFactory().configureBlockSize(100000)
+    val enc = factory.blockingBinaryEncoder(os, null)
+    val datumWriter = new GenericDatumWriter[GenericArray[GenericRecord]](payloadSchemaString)
+
+    val plRecords = new GenericData.Array[GenericRecord](100000, payloadSchemaString)
+
+    val plList = for(row <- payload) {
+      val rec = new GenericData.Record(rowSchemaString);
+      row.newRec match {
         case true => {
-            for((dim, idx) <- currentStructure.zipWithIndex) {
-              appendCompressed(dim.key, data.keys(idx), i)
+            for((dim, idx) <- newDimensions.zipWithIndex) {
+              if(row.keys(idx) != null) {
+                rec.put(dim.key, row.keys(idx))
+              } else {
+                rec.put(dim.key, "")
+              }
             }
-            appendCompressed("i", ci, i)
+            rec.put("i", newIteration)
+            // Get the elements not in this set
+            for(dim <- oldDimensions.toSet.diff(newDimensions.toSet)){
+              rec.put(dim.key, "")
+            }
           }
         case false => {
-            for((dim, idx) <- previousStructure.zipWithIndex) {
-              appendCompressed(dim.key, data.keys(idx), i)
+            for((dim, idx) <- oldDimensions.zipWithIndex) {
+              if(row.keys(idx) != null) {
+                rec.put(dim.key, row.keys(idx))
+              } else {
+                rec.put(dim.key, "")
+              }
             }
-            appendCompressed("i", oi, i)
+            rec.put("i", oldIteration)
+            // Get the elements not in this set
+            for(dim <- newDimensions.toSet.diff(oldDimensions.toSet)){
+              rec.put(dim.key, "")
+            }
           }
       }
       
-      appendCompressed("count", data.values(0).toString, i)
-      appendCompressed("sum", data.values(1).toString, i)
-      appendCompressed("avg", data.values(2).toString, i)
+      rec.put("count", row.values(0).toString)
+      rec.put("sum", row.values(1).toString)
+      rec.put("avg", row.values(2).toString)
+      
+      plRecords.add(rec)
     }
 
-    val finalPayload = for((key, value) <- compressedPayload) yield {
-      val map: Map[String, String] = Map()
-      val fieldList = for((member, arr) <- value) yield {
-        map.update(member, arr.mkString(","))
-        JField(member, JString(arr.mkString(",")))
-      }
-      JField(key, JObject(fieldList.toList))
-    }
-    
-    JObject(finalPayload.toList)
+    datumWriter.write(plRecords, enc)
+    os.flush()
+    os.close()
+
+    os.toByteArray
   }
 }

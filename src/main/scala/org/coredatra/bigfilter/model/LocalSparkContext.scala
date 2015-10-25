@@ -16,7 +16,7 @@ import au.com.bytecode.opencsv.CSVParser
 object LocalSparkContext {
   val conf = new SparkConf()
     .setAppName("LCA Filter")
-    .setMaster("local[3]")
+    .setMaster("local[4]")
     .set("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops")
     .set("spark.executor.memory", "4g")
     .set("spark.scheduler.mode", "FAIR")
@@ -34,6 +34,7 @@ object LocalSparkContext {
   val sc = new SparkContext(conf)
   val splitFiles = sc.textFile("/data/lca/LCA_FY2013.csv")
     .union(sc.textFile("/data/lca/H-1B_FY14_Q4.csv"))
+    .union(sc.textFile("/data/lca/H-1B_FY2015_Q3.csv"))
     .union(sc.textFile("/data/lca/LCA_FY2012_Q4.csv"))
     .union(sc.textFile("/data/lca/H-1B_iCert_LCA_FY2011_Q4.csv"))
     .union(sc.textFile("/data/lca/H-1B_FY2010.csv"))
@@ -48,7 +49,8 @@ object LocalSparkContext {
       }
       ret
     })
-    .filter((s) => s.size > 0)
+    .filter((s) => s.size > 0) // Contains data
+    .filter((s) => !s.drop(15).head.contains('-')) // Exclude range formatted wage (1 record...)
     .map(line => {
       val amount = line.drop(17).head match {
         case "Year" => (if(line.drop(15).head != "") { line.drop(15).head.toDouble } else { 0 })

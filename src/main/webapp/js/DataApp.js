@@ -126,9 +126,15 @@ controller('Data', ['$scope', '$q', 'dataService', function($scope, $q, dataServ
 
   $scope.$on('addData', function(e, obj) {
 
-    var buff = new Buffer(obj);
+    var bString = atob(obj.byteString);
+    var bytes = [];
+    for(var i=0; i<bString.length; i++) {
+      bytes.push(bString.charCodeAt(i) < 127 ? bString.charCodeAt(i) : (-256 + bString.charCodeAt(i)));
+    }
 
-    var type = avsc.parse(payloadSchema);
+    var buff = new Buffer(bytes);
+
+    var type = avsc.parse(obj.schema);
     var parsedObj = type.fromBuffer(buff);
     
     parsedObj.forEach(function(d, i) {

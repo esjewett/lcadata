@@ -27,6 +27,7 @@ import org.apache.avro.file.CodecFactory
 import org.apache.avro.io.{DirectBinaryEncoder,EncoderFactory, BinaryEncoder,DecoderFactory}
 
 import java.io.ByteArrayOutputStream
+import javax.xml.bind.DatatypeConverter
 
 class DataService {
 
@@ -200,14 +201,14 @@ class DataService {
 
     val rowSchemaString = Schema.parse(Printer.compact(JsonAST.render(rowSchemaObj)))
 
-    val payloadSchemaString = payloadSchema(newDimensions, oldDimensions)
+    val payloadSch = payloadSchema(newDimensions, oldDimensions)
 
     val os = new ByteArrayOutputStream()
     val factory = new EncoderFactory().configureBlockSize(100000)
     val enc = factory.blockingBinaryEncoder(os, null)
-    val datumWriter = new GenericDatumWriter[GenericArray[GenericRecord]](payloadSchemaString)
+    val datumWriter = new GenericDatumWriter[GenericArray[GenericRecord]](payloadSch)
 
-    val plRecords = new GenericData.Array[GenericRecord](100000, payloadSchemaString)
+    val plRecords = new GenericData.Array[GenericRecord](100000, payloadSch)
 
     val plList = for(row <- payload) {
       val rec = new GenericData.Record(rowSchemaString);
@@ -253,6 +254,9 @@ class DataService {
     os.flush()
     os.close()
 
-    os.toByteArray
+    JObject(List(
+      JField("schema", JString(payloadSchemaString(newDimensions, oldDimensions))),
+      JField("byteString", JString(DatatypeConverter.printBase64Binary(os.toByteArray())))
+    ))
   }
 }
